@@ -6,8 +6,9 @@ import { PRODUCT_CATEGORIES, categoryLabel } from "@/lib/product-categories";
 import { CATEGORY_ICON_COMPONENTS } from "@/lib/category-icons-map";
 import { cleanName } from "@/lib/name-utils";
 import { Input } from "@/components/ui/input";
+import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { cn } from "@/lib/utils";
-import { LayoutGrid, Search, SlidersHorizontal } from "lucide-react";
+import { LayoutGrid, Search, SlidersHorizontal, X, Check } from "lucide-react";
 
 const productsQuery = queryOptions({
   queryKey: ["products", "active"],
@@ -45,6 +46,7 @@ function Browse() {
   const [activeCategory, setActiveCategory] = useState<string | null>(null);
   const [availability, setAvailability] = useState<AvailabilityFilter>("all");
   const [query, setQuery] = useState("");
+  const [filterOpen, setFilterOpen] = useState(false);
 
   const tiles = useMemo(() => {
     return PRODUCT_CATEGORIES.map((cat) => {
@@ -83,6 +85,16 @@ function Browse() {
     setAvailability("all");
   }
 
+  const availableCount = products.filter(
+    (p) => (p as any).category === activeCategory && !p.is_reserved,
+  ).length;
+  const reservedCount = products.filter(
+    (p) => (p as any).category === activeCategory && p.is_reserved,
+  ).length;
+
+  // Count active non-default filters (for the badge on the mobile filter button)
+  const activeFilterCount = (availability !== "all" ? 1 : 0);
+
   // ── Category grid ─────────────────────────────────────────────
   if (!activeCategory) {
     return (
@@ -92,13 +104,14 @@ function Browse() {
             <h1 className="text-2xl font-bold tracking-tight text-foreground sm:text-4xl">
               Furniture Collection
             </h1>
-            <p className="mt-1.5 text-xs text-muted-foreground sm:text-sm sm:mt-2">
+            <p className="mt-1.5 text-xs text-muted-foreground sm:mt-2 sm:text-sm">
               Browse our pieces by category and reserve the one you love.
             </p>
           </div>
 
+          {/* Category jump pills — desktop only (mobile uses the image grid) */}
           {tiles.length > 0 && (
-            <div className="mx-auto max-w-6xl px-4 pb-6">
+            <div className="mx-auto max-w-6xl px-4 pb-6 hidden sm:block">
               <div className="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-none">
                 <SlidersHorizontal className="h-4 w-4 shrink-0 text-muted-foreground" />
                 {tiles.map((cat) => {
@@ -125,7 +138,7 @@ function Browse() {
               No products available yet.
             </p>
           ) : (
-            <div className="grid grid-cols-2 gap-x-3 gap-y-7 sm:gap-x-6 sm:gap-y-10 sm:grid-cols-3">
+            <div className="grid grid-cols-2 gap-x-3 gap-y-7 sm:grid-cols-3 sm:gap-x-6 sm:gap-y-10">
               {tiles.map((cat) => {
                 const Icon = CATEGORY_ICON_COMPONENTS[cat.value] ?? LayoutGrid;
                 return (
@@ -135,7 +148,6 @@ function Browse() {
                     onClick={() => selectCategory(cat.value)}
                     className="group text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 rounded-sm"
                   >
-                    {/* Image — no card box, just the image itself */}
                     <div className="aspect-[4/3] w-full overflow-hidden rounded-xl bg-muted/30">
                       {cat.image ? (
                         <img
@@ -152,10 +164,9 @@ function Browse() {
                         </div>
                       )}
                     </div>
-                    {/* Label — direct on background, no card wrapper */}
                     <div className="mt-2.5 flex items-start justify-between gap-1.5">
                       <div>
-                        <p className="flex items-center gap-1 text-xs font-semibold text-foreground sm:text-sm sm:gap-1.5">
+                        <p className="flex items-center gap-1 text-xs font-semibold text-foreground sm:gap-1.5 sm:text-sm">
                           <Icon className="h-3 w-3 shrink-0 text-muted-foreground sm:h-3.5 sm:w-3.5" strokeWidth={1.75} />
                           {cat.label}
                         </p>
@@ -179,49 +190,67 @@ function Browse() {
 
   // ── Product list within a category ────────────────────────────
   const CatIcon = CATEGORY_ICON_COMPONENTS[activeCategory] ?? LayoutGrid;
-  const availableCount = products.filter(
-    (p) => (p as any).category === activeCategory && !p.is_reserved,
-  ).length;
-  const reservedCount = products.filter(
-    (p) => (p as any).category === activeCategory && p.is_reserved,
-  ).length;
 
   return (
     <div className="min-h-screen bg-background">
       <header>
-        <div className="mx-auto max-w-6xl px-4 pt-8 pb-6">
+        <div className="mx-auto max-w-6xl px-4 pt-6 pb-4 sm:pt-8 sm:pb-6">
           <button
             type="button"
             onClick={clearCategory}
-            className="mb-5 flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground transition-colors"
+            className="mb-4 flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground transition-colors sm:mb-5"
           >
             ← All categories
           </button>
 
-          <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-            <div className="flex items-center gap-2.5">
-              <CatIcon className="h-5 w-5 text-muted-foreground" strokeWidth={1.75} />
-              <h1 className="text-2xl font-bold tracking-tight text-foreground">
+          {/* Title row */}
+          <div className="flex items-center justify-between gap-3">
+            <div className="flex items-center gap-2 min-w-0">
+              <CatIcon className="h-4 w-4 shrink-0 text-muted-foreground sm:h-5 sm:w-5" strokeWidth={1.75} />
+              <h1 className="truncate text-xl font-bold tracking-tight text-foreground sm:text-2xl">
                 {activeTile?.label ?? categoryLabel(activeCategory)}
               </h1>
-              <span className="text-sm text-muted-foreground">
+              <span className="shrink-0 text-sm text-muted-foreground">
                 · {filteredProducts.length}
               </span>
             </div>
-            <div className="relative max-w-xs w-full sm:w-auto">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
-              <Input
-                type="search"
-                placeholder={`Search ${activeTile?.label.toLowerCase() ?? ""}…`}
-                value={query}
-                onChange={(e) => setQuery(e.target.value)}
-                className="pl-9"
-              />
-            </div>
+
+            {/* Mobile filter button */}
+            <button
+              type="button"
+              onClick={() => setFilterOpen(true)}
+              className={cn(
+                "relative flex sm:hidden shrink-0 items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-medium transition-all",
+                activeFilterCount > 0
+                  ? "border-foreground bg-foreground text-background"
+                  : "border-border text-muted-foreground hover:border-foreground/40 hover:text-foreground",
+              )}
+            >
+              <SlidersHorizontal className="h-3.5 w-3.5" />
+              Filter
+              {activeFilterCount > 0 && (
+                <span className="flex h-4 w-4 items-center justify-center rounded-full bg-background/20 text-[10px] font-bold text-background">
+                  {activeFilterCount}
+                </span>
+              )}
+            </button>
           </div>
 
-          {/* Sub-filters row */}
-          <div className="mt-4 flex flex-wrap items-center gap-x-5 gap-y-2">
+          {/* Search bar */}
+          <div className="mt-3 relative sm:mt-4">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
+            <Input
+              type="search"
+              placeholder={`Search ${activeTile?.label.toLowerCase() ?? ""}…`}
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              className="pl-9 h-9 text-sm sm:max-w-xs"
+            />
+          </div>
+
+          {/* Desktop inline filters */}
+          <div className="mt-4 hidden sm:flex flex-wrap items-center gap-x-5 gap-y-2">
+            {/* Category jump */}
             <div className="flex items-center gap-1.5 overflow-x-auto scrollbar-none">
               <span className="shrink-0 text-xs text-muted-foreground">Jump:</span>
               {tiles
@@ -241,6 +270,7 @@ function Browse() {
                 })}
             </div>
 
+            {/* Availability */}
             <div className="flex items-center gap-1.5 shrink-0 ml-auto">
               <span className="text-xs text-muted-foreground">Show:</span>
               <FilterPill active={availability === "all"} label="All" onClick={() => setAvailability("all")} />
@@ -285,7 +315,7 @@ function Browse() {
                   )}
                 </div>
                 <div className="mt-2 sm:mt-3">
-                  <h2 className="text-xs font-semibold leading-snug text-foreground group-hover:text-primary transition-colors sm:text-sm">
+                  <h2 className="text-xs font-semibold leading-snug text-foreground transition-colors group-hover:text-primary sm:text-sm">
                     {cleanName(p.name)}
                   </h2>
                   {p.short_description && (
@@ -302,11 +332,128 @@ function Browse() {
           </div>
         )}
       </main>
+
+      {/* ── Mobile filter bottom sheet ── */}
+      <Sheet open={filterOpen} onOpenChange={setFilterOpen}>
+        <SheetContent side="bottom" className="rounded-t-2xl px-0 pb-safe max-h-[80vh] overflow-y-auto">
+          <SheetHeader className="px-5 pb-2">
+            <div className="flex items-center justify-between">
+              <SheetTitle className="text-base font-semibold">Filter &amp; Browse</SheetTitle>
+              <button
+                type="button"
+                onClick={() => setFilterOpen(false)}
+                className="rounded-full p-1.5 text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+          </SheetHeader>
+
+          <div className="px-5 pt-4 pb-8 space-y-7">
+            {/* Availability */}
+            <div>
+              <p className="mb-3 text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">
+                Availability
+              </p>
+              <div className="space-y-1.5">
+                {(
+                  [
+                    { value: "all", label: "Show all" },
+                    { value: "available", label: "Available only", count: availableCount },
+                    { value: "reserved", label: "Reserved only", count: reservedCount },
+                  ] as const
+                ).map((opt) => (
+                  <button
+                    key={opt.value}
+                    type="button"
+                    onClick={() => {
+                      setAvailability(opt.value);
+                    }}
+                    className={cn(
+                      "flex w-full items-center justify-between rounded-xl px-4 py-3 text-sm font-medium transition-all",
+                      availability === opt.value
+                        ? "bg-foreground text-background"
+                        : "bg-muted/40 text-foreground hover:bg-muted/70",
+                    )}
+                  >
+                    <span>{opt.label}</span>
+                    <div className="flex items-center gap-2">
+                      {"count" in opt && (
+                        <span className={cn(
+                          "text-xs tabular-nums",
+                          availability === opt.value ? "text-background/70" : "text-muted-foreground",
+                        )}>
+                          {opt.count}
+                        </span>
+                      )}
+                      {availability === opt.value && (
+                        <Check className="h-4 w-4" />
+                      )}
+                    </div>
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Category switcher */}
+            <div>
+              <p className="mb-3 text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">
+                Jump to category
+              </p>
+              <div className="space-y-1.5">
+                {tiles.map((cat) => {
+                  const Icon = CATEGORY_ICON_COMPONENTS[cat.value] ?? LayoutGrid;
+                  const isCurrent = cat.value === activeCategory;
+                  return (
+                    <button
+                      key={cat.value}
+                      type="button"
+                      onClick={() => {
+                        selectCategory(cat.value);
+                        setFilterOpen(false);
+                      }}
+                      className={cn(
+                        "flex w-full items-center justify-between rounded-xl px-4 py-3 text-sm font-medium transition-all",
+                        isCurrent
+                          ? "bg-foreground text-background"
+                          : "bg-muted/40 text-foreground hover:bg-muted/70",
+                      )}
+                    >
+                      <span className="flex items-center gap-2.5">
+                        <Icon
+                          className={cn("h-4 w-4", isCurrent ? "text-background/80" : "text-muted-foreground")}
+                          strokeWidth={1.75}
+                        />
+                        {cat.label}
+                      </span>
+                      <span className={cn(
+                        "text-xs tabular-nums",
+                        isCurrent ? "text-background/70" : "text-muted-foreground",
+                      )}>
+                        {cat.count}
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Done button */}
+            <button
+              type="button"
+              onClick={() => setFilterOpen(false)}
+              className="w-full rounded-xl bg-foreground py-3 text-sm font-semibold text-background transition-opacity hover:opacity-80"
+            >
+              Show {filteredProducts.length} result{filteredProducts.length !== 1 ? "s" : ""}
+            </button>
+          </div>
+        </SheetContent>
+      </Sheet>
     </div>
   );
 }
 
-// ── Filter pill ────────────────────────────────────────────────
+// ── Filter pill (desktop) ──────────────────────────────────────
 interface FilterPillProps {
   active: boolean;
   label: string;
@@ -333,12 +480,10 @@ function FilterPill({ active, label, icon, count, onClick, disabled }: FilterPil
       {icon}
       {label}
       {count !== undefined && (
-        <span
-          className={cn(
-            "rounded-full px-1.5 py-px text-[10px] font-semibold tabular-nums",
-            active ? "bg-background/20 text-background" : "text-muted-foreground",
-          )}
-        >
+        <span className={cn(
+          "rounded-full px-1.5 py-px text-[10px] font-semibold tabular-nums",
+          active ? "bg-background/20 text-background" : "text-muted-foreground",
+        )}>
           {count}
         </span>
       )}
