@@ -379,15 +379,15 @@ function Browse() {
                   )}
                 </div>
                 <div className="mt-2 sm:mt-3">
-                  <h2 className="text-xs font-semibold leading-snug text-foreground transition-colors group-hover:text-primary sm:text-sm">
+                  <h2 className="text-xs font-semibold leading-snug text-violet-800 transition-colors group-hover:text-violet-600 sm:text-sm">
                     {cleanName(p.name)}
                   </h2>
                   {p.short_description && (
-                    <p className="mt-0.5 line-clamp-1 text-[10px] text-muted-foreground sm:text-xs">
+                    <p className="mt-0.5 line-clamp-1 text-[10px] text-teal-600 sm:text-xs">
                       {p.short_description}
                     </p>
                   )}
-                  <p className="mt-1 text-xs font-bold text-foreground sm:mt-1.5 sm:text-sm">
+                  <p className="mt-1 text-xs font-bold text-emerald-600 sm:mt-1.5 sm:text-sm">
                     KSh {Number(p.offer_price).toLocaleString()}
                   </p>
                 </div>
