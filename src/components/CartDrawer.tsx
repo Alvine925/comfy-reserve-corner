@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
 import { toast } from "sonner";
-import { ShoppingBag, X, Trash2, CheckCircle2 } from "lucide-react";
+import { ShoppingBag, X, Trash2, FileText } from "lucide-react";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -13,13 +13,19 @@ import { createCartReservation } from "@/lib/products.functions";
 import { cleanName } from "@/lib/name-utils";
 import { CATEGORY_ICON_COMPONENTS } from "@/lib/category-icons-map";
 import { LayoutGrid } from "lucide-react";
+import {
+  printReservationDocument,
+  generateReference,
+  formatDocDate,
+  type ReservationDocData,
+} from "@/lib/reservation-document";
 
 export function CartDrawer() {
   const { items, removeItem, clearCart, total, isOpen, closeCart } = useCart();
   const reserve = useServerFn(createCartReservation);
   const [form, setForm] = useState({ name: "", email: "", phone: "", notes: "" });
   const [submitting, setSubmitting] = useState(false);
-  const [confirmed, setConfirmed] = useState<{ serials: string[] } | null>(null);
+  const [confirmed, setConfirmed] = useState<ReservationDocData | null>(null);
 
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -35,7 +41,26 @@ export function CartDrawer() {
           notes: form.notes || undefined,
         },
       });
-      setConfirmed({ serials: items.map((i) => i.serialNumber) });
+
+      const docData: ReservationDocData = {
+        reference: generateReference(),
+        date: formatDocDate(new Date()),
+        customer: {
+          name: form.name,
+          email: form.email,
+          phone: form.phone,
+          notes: form.notes || undefined,
+        },
+        items: items.map((i) => ({
+          productName: cleanName(i.productName),
+          serialNumber: i.serialNumber,
+          price: i.price,
+          category: i.category,
+        })),
+        total,
+      };
+
+      setConfirmed(docData);
       clearCart();
       setForm({ name: "", email: "", phone: "", notes: "" });
     } catch (err) {
@@ -47,7 +72,6 @@ export function CartDrawer() {
 
   function handleClose() {
     closeCart();
-    // reset confirmed state after close animation
     setTimeout(() => setConfirmed(null), 300);
   }
 
@@ -55,8 +79,8 @@ export function CartDrawer() {
     <Sheet open={isOpen} onOpenChange={(o) => !o && handleClose()}>
       <SheetContent className="flex w-full flex-col sm:max-w-md overflow-y-auto">
         <SheetHeader className="shrink-0">
-          <SheetTitle className="flex items-center gap-2">
-            <ShoppingBag className="h-5 w-5" />
+          <SheetTitle className="flex items-center gap-2 text-base">
+            <ShoppingBag className="h-4 w-4" />
             Reservation Cart
             {items.length > 0 && !confirmed && (
               <span className="ml-auto text-xs font-normal text-muted-foreground">
@@ -68,31 +92,79 @@ export function CartDrawer() {
 
         {confirmed ? (
           /* ── Success state ── */
-          <div className="flex flex-1 flex-col items-center justify-center gap-4 py-12 text-center">
-            <CheckCircle2 className="h-14 w-14 text-green-500" />
-            <h3 className="text-lg font-semibold text-foreground">Reservations confirmed!</h3>
-            <p className="text-sm text-muted-foreground">
-              A confirmation email is on its way to you. Keep your serial numbers safe.
-            </p>
-            <div className="w-full rounded-lg border bg-muted/30 p-4 text-left">
-              <p className="mb-2 text-xs font-medium uppercase tracking-wider text-muted-foreground">
-                Reserved serials
+          <div className="flex flex-1 flex-col gap-5 py-6 overflow-y-auto">
+            {/* Status header */}
+            <div className="text-center">
+              <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-green-100">
+                <svg className="h-6 w-6 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                </svg>
+              </div>
+              <h3 className="text-base font-semibold text-foreground">Reservation confirmed</h3>
+              <p className="mt-1 text-xs text-muted-foreground">
+                Ref: <span className="font-mono font-semibold">{confirmed.reference}</span>
               </p>
-              {confirmed.serials.map((s) => (
-                <p key={s} className="font-mono text-sm font-semibold">{s}</p>
-              ))}
             </div>
-            <Button variant="outline" className="mt-2 w-full" onClick={handleClose}>
-              Done
+
+            {/* Items summary */}
+            <div>
+              <p className="mb-2 text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">
+                Items reserved
+              </p>
+              <div className="space-y-2">
+                {confirmed.items.map((item) => (
+                  <div key={item.serialNumber} className="flex items-start justify-between gap-3">
+                    <div className="min-w-0">
+                      <p className="truncate text-sm font-medium text-foreground">{item.productName}</p>
+                      <p className="font-mono text-[11px] text-muted-foreground">S/N: {item.serialNumber}</p>
+                    </div>
+                    <p className="shrink-0 text-sm font-semibold">
+                      KSh {Number(item.price).toLocaleString()}
+                    </p>
+                  </div>
+                ))}
+              </div>
+              <div className="mt-3 flex justify-between border-t pt-3">
+                <span className="text-xs text-muted-foreground">Total</span>
+                <span className="text-sm font-bold">KSh {confirmed.total.toLocaleString()}</span>
+              </div>
+            </div>
+
+            <Separator />
+
+            {/* T&C notice */}
+            <div className="rounded-lg bg-amber-50 border border-amber-200 px-3 py-3 text-[11.5px] leading-relaxed text-amber-800 space-y-1">
+              <p className="font-semibold text-amber-900">Please read before proceeding</p>
+              <ul className="list-disc list-inside space-y-1">
+                <li>Reservations go to the <strong>highest bidder</strong> — this is not a guaranteed purchase.</li>
+                <li>Your reservation is valid for <strong>7 days</strong> from today.</li>
+                <li>Items will be <strong>released</strong> if full payment is not received within that period.</li>
+              </ul>
+            </div>
+
+            {/* Order document CTA */}
+            <Button
+              className="w-full gap-2"
+              onClick={() => printReservationDocument(confirmed)}
+            >
+              <FileText className="h-4 w-4" />
+              Download / Print Order Sheet
+            </Button>
+            <p className="text-center text-[11px] text-muted-foreground -mt-2">
+              Full terms &amp; conditions are included in the document.
+            </p>
+
+            <Button variant="outline" className="w-full" onClick={handleClose}>
+              Done — keep browsing
             </Button>
           </div>
         ) : items.length === 0 ? (
           /* ── Empty state ── */
           <div className="flex flex-1 flex-col items-center justify-center gap-3 py-16 text-center">
-            <ShoppingBag className="h-12 w-12 text-muted-foreground/30" />
+            <ShoppingBag className="h-10 w-10 text-muted-foreground/25" />
             <p className="text-sm text-muted-foreground">Your cart is empty.</p>
             <p className="text-xs text-muted-foreground">
-              Browse products and select a serial number to add items.
+              Browse items and tap a serial number to add them.
             </p>
             <Button variant="outline" size="sm" className="mt-2" onClick={handleClose}>
               Browse products
@@ -107,8 +179,7 @@ export function CartDrawer() {
                 const Icon = CATEGORY_ICON_COMPONENTS[item.category ?? ""] ?? LayoutGrid;
                 return (
                   <div key={item.unitId} className="flex items-start gap-3">
-                    {/* Thumbnail */}
-                    <div className="h-14 w-14 shrink-0 overflow-hidden rounded-lg bg-muted/40">
+                    <div className="h-12 w-12 shrink-0 overflow-hidden rounded-lg bg-muted/40">
                       {item.imageUrl ? (
                         <img
                           src={item.imageUrl}
@@ -117,11 +188,10 @@ export function CartDrawer() {
                         />
                       ) : (
                         <div className="flex h-full w-full items-center justify-center">
-                          <Icon className="h-6 w-6 text-muted-foreground/50" strokeWidth={1.5} />
+                          <Icon className="h-5 w-5 text-muted-foreground/50" strokeWidth={1.5} />
                         </div>
                       )}
                     </div>
-                    {/* Info */}
                     <div className="flex-1 min-w-0">
                       <p className="truncate text-sm font-semibold leading-tight">
                         {cleanName(item.productName)}
@@ -129,11 +199,10 @@ export function CartDrawer() {
                       <p className="mt-0.5 font-mono text-[11px] text-muted-foreground">
                         S/N: {item.serialNumber}
                       </p>
-                      <p className="mt-0.5 text-sm font-bold text-primary">
+                      <p className="mt-0.5 text-sm font-bold">
                         KSh {Number(item.price).toLocaleString()}
                       </p>
                     </div>
-                    {/* Remove */}
                     <button
                       type="button"
                       onClick={() => removeItem(item.unitId)}
@@ -149,10 +218,9 @@ export function CartDrawer() {
 
             <Separator />
 
-            {/* Total */}
             <div className="flex items-center justify-between py-3 shrink-0">
-              <span className="text-sm text-muted-foreground">Total</span>
-              <span className="text-base font-bold text-foreground">
+              <span className="text-xs text-muted-foreground">Total</span>
+              <span className="text-sm font-bold text-foreground">
                 KSh {total.toLocaleString()}
               </span>
             </div>
@@ -161,21 +229,22 @@ export function CartDrawer() {
 
             {/* Contact form */}
             <div className="flex-1 space-y-3 py-4 overflow-y-auto">
-              <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
+              <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">
                 Your details
               </p>
               <div>
-                <Label htmlFor="cart-name">Full name</Label>
+                <Label htmlFor="cart-name" className="text-xs">Full name</Label>
                 <Input
                   id="cart-name"
                   required
                   value={form.name}
                   onChange={(e) => setForm({ ...form, name: e.target.value })}
                   maxLength={120}
+                  className="h-9 text-sm"
                 />
               </div>
               <div>
-                <Label htmlFor="cart-email">Email</Label>
+                <Label htmlFor="cart-email" className="text-xs">Email</Label>
                 <Input
                   id="cart-email"
                   type="email"
@@ -183,10 +252,11 @@ export function CartDrawer() {
                   value={form.email}
                   onChange={(e) => setForm({ ...form, email: e.target.value })}
                   maxLength={255}
+                  className="h-9 text-sm"
                 />
               </div>
               <div>
-                <Label htmlFor="cart-phone">Phone</Label>
+                <Label htmlFor="cart-phone" className="text-xs">Phone</Label>
                 <Input
                   id="cart-phone"
                   type="tel"
@@ -194,35 +264,43 @@ export function CartDrawer() {
                   value={form.phone}
                   onChange={(e) => setForm({ ...form, phone: e.target.value })}
                   maxLength={40}
+                  className="h-9 text-sm"
                 />
               </div>
               <div>
-                <Label htmlFor="cart-notes">Notes (optional)</Label>
+                <Label htmlFor="cart-notes" className="text-xs">Notes (optional)</Label>
                 <Textarea
                   id="cart-notes"
                   value={form.notes}
                   onChange={(e) => setForm({ ...form, notes: e.target.value })}
                   rows={2}
                   maxLength={1000}
+                  className="text-sm"
                 />
+              </div>
+
+              {/* Inline T&C reminder before submit */}
+              <div className="rounded-lg border border-border bg-muted/30 px-3 py-2.5 text-[11px] leading-relaxed text-muted-foreground">
+                By confirming, you acknowledge that reservations are subject to the highest-bidder policy,
+                are valid for <strong>7 days</strong>, and are not guaranteed until full payment is received.
               </div>
             </div>
 
-            {/* Submit + clear */}
+            {/* Submit */}
             <div className="shrink-0 space-y-2 pt-2 pb-4">
-              <Button type="submit" disabled={submitting} className="w-full">
+              <Button type="submit" disabled={submitting} className="w-full text-sm">
                 {submitting
                   ? "Reserving…"
-                  : `Confirm ${items.length} reservation${items.length !== 1 ? "s" : ""} — KSh ${total.toLocaleString()}`}
+                  : `Reserve ${items.length} item${items.length !== 1 ? "s" : ""} — KSh ${total.toLocaleString()}`}
               </Button>
               <Button
                 type="button"
                 variant="ghost"
                 size="sm"
-                className="w-full text-muted-foreground hover:text-destructive"
+                className="w-full text-xs text-muted-foreground hover:text-destructive"
                 onClick={clearCart}
               >
-                <Trash2 className="mr-1.5 h-3.5 w-3.5" />
+                <Trash2 className="mr-1.5 h-3 w-3" />
                 Clear cart
               </Button>
             </div>
@@ -240,11 +318,11 @@ export function CartButton() {
       type="button"
       onClick={openCart}
       aria-label={`Open cart (${count} items)`}
-      className="fixed bottom-6 right-6 z-50 flex h-14 w-14 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-lg transition-all hover:bg-primary/90 hover:shadow-xl active:scale-95"
+      className="fixed bottom-5 right-5 z-50 flex h-13 w-13 items-center justify-center rounded-full bg-foreground text-background shadow-lg transition-all hover:opacity-90 hover:shadow-xl active:scale-95 sm:bottom-6 sm:right-6 sm:h-14 sm:w-14"
     >
-      <ShoppingBag className="h-6 w-6" />
+      <ShoppingBag className="h-5 w-5 sm:h-6 sm:w-6" />
       {count > 0 && (
-        <span className="absolute -right-1 -top-1 flex h-5 w-5 items-center justify-center rounded-full bg-destructive text-[11px] font-bold text-destructive-foreground">
+        <span className="absolute -right-1 -top-1 flex h-5 w-5 items-center justify-center rounded-full bg-red-500 text-[10px] font-bold text-white">
           {count > 9 ? "9+" : count}
         </span>
       )}

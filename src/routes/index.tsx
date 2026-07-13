@@ -88,11 +88,11 @@ function Browse() {
     return (
       <div className="min-h-screen bg-background">
         <header>
-          <div className="mx-auto max-w-6xl px-4 py-10">
-            <h1 className="text-4xl font-bold tracking-tight text-foreground">
+          <div className="mx-auto max-w-6xl px-4 py-6 sm:py-10">
+            <h1 className="text-2xl font-bold tracking-tight text-foreground sm:text-4xl">
               Furniture Collection
             </h1>
-            <p className="mt-2 text-sm text-muted-foreground">
+            <p className="mt-1.5 text-xs text-muted-foreground sm:text-sm sm:mt-2">
               Browse our pieces by category and reserve the one you love.
             </p>
           </div>
@@ -125,7 +125,7 @@ function Browse() {
               No products available yet.
             </p>
           ) : (
-            <div className="grid grid-cols-2 gap-x-6 gap-y-10 sm:grid-cols-3">
+            <div className="grid grid-cols-2 gap-x-3 gap-y-7 sm:gap-x-6 sm:gap-y-10 sm:grid-cols-3">
               {tiles.map((cat) => {
                 const Icon = CATEGORY_ICON_COMPONENTS[cat.value] ?? LayoutGrid;
                 return (
@@ -153,17 +153,17 @@ function Browse() {
                       )}
                     </div>
                     {/* Label — direct on background, no card wrapper */}
-                    <div className="mt-3 flex items-start justify-between gap-2">
+                    <div className="mt-2.5 flex items-start justify-between gap-1.5">
                       <div>
-                        <p className="flex items-center gap-1.5 text-sm font-semibold text-foreground">
-                          <Icon className="h-3.5 w-3.5 shrink-0 text-muted-foreground" strokeWidth={1.75} />
+                        <p className="flex items-center gap-1 text-xs font-semibold text-foreground sm:text-sm sm:gap-1.5">
+                          <Icon className="h-3 w-3 shrink-0 text-muted-foreground sm:h-3.5 sm:w-3.5" strokeWidth={1.75} />
                           {cat.label}
                         </p>
-                        <p className="mt-0.5 text-xs text-muted-foreground">
+                        <p className="mt-0.5 text-[10px] text-muted-foreground sm:text-xs">
                           {cat.count} item{cat.count !== 1 ? "s" : ""}
                         </p>
                       </div>
-                      <span className="mt-0.5 text-sm text-muted-foreground transition-colors group-hover:text-foreground">
+                      <span className="mt-0.5 text-xs text-muted-foreground transition-colors group-hover:text-foreground sm:text-sm">
                         →
                       </span>
                     </div>
@@ -257,7 +257,7 @@ function Browse() {
             No items match your filters.
           </p>
         ) : (
-          <div className="grid grid-cols-2 gap-x-6 gap-y-10 sm:grid-cols-2 lg:grid-cols-3">
+          <div className="grid grid-cols-2 gap-x-3 gap-y-7 sm:gap-x-6 sm:gap-y-10 lg:grid-cols-3">
             {filteredProducts.map((p) => (
               <Link
                 key={p.id}
@@ -265,7 +265,6 @@ function Browse() {
                 params={{ id: p.id }}
                 className="group block focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 rounded-sm"
               >
-                {/* Image — no card wrapper */}
                 <div className="relative aspect-square overflow-hidden rounded-xl bg-muted/25">
                   {p.image_url ? (
                     <img
@@ -276,26 +275,25 @@ function Browse() {
                     />
                   ) : (
                     <div className="flex h-full w-full items-center justify-center bg-muted/20">
-                      <CatIcon className="h-10 w-10 text-muted-foreground/30" strokeWidth={1.25} />
+                      <CatIcon className="h-8 w-8 text-muted-foreground/30 sm:h-10 sm:w-10" strokeWidth={1.25} />
                     </div>
                   )}
                   {p.is_reserved && (
-                    <span className="absolute top-2 right-2 rounded-full bg-black/60 px-2 py-0.5 text-[11px] font-medium text-white backdrop-blur-sm">
+                    <span className="absolute top-1.5 right-1.5 rounded-full bg-black/60 px-1.5 py-px text-[10px] font-medium text-white backdrop-blur-sm sm:top-2 sm:right-2 sm:px-2">
                       Reserved
                     </span>
                   )}
                 </div>
-                {/* Text — directly on page background */}
-                <div className="mt-3">
-                  <h2 className="text-sm font-semibold leading-snug text-foreground group-hover:text-primary transition-colors">
+                <div className="mt-2 sm:mt-3">
+                  <h2 className="text-xs font-semibold leading-snug text-foreground group-hover:text-primary transition-colors sm:text-sm">
                     {cleanName(p.name)}
                   </h2>
                   {p.short_description && (
-                    <p className="mt-0.5 line-clamp-1 text-xs text-muted-foreground">
+                    <p className="mt-0.5 line-clamp-1 text-[10px] text-muted-foreground sm:text-xs">
                       {p.short_description}
                     </p>
                   )}
-                  <p className="mt-1.5 text-sm font-bold text-foreground">
+                  <p className="mt-1 text-xs font-bold text-foreground sm:mt-1.5 sm:text-sm">
                     KSh {Number(p.offer_price).toLocaleString()}
                   </p>
                 </div>

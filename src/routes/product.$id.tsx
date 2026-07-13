@@ -129,39 +129,38 @@ function ProductPage() {
         </div>
       </header>
 
-      <main className="mx-auto grid max-w-5xl gap-10 px-4 py-8 md:grid-cols-2">
+      <main className="mx-auto grid max-w-5xl gap-6 px-4 py-5 md:gap-10 md:py-8 md:grid-cols-2">
         <ProductGallery images={images} name={displayName} />
 
         <div>
           {product.is_reserved && (
-            <div className="mb-4 rounded-lg bg-amber-50 border border-amber-200 px-4 py-3 text-sm text-amber-800 font-medium">
+            <div className="mb-3 rounded-lg bg-amber-50 border border-amber-200 px-3 py-2.5 text-xs text-amber-800 font-medium sm:px-4 sm:py-3 sm:text-sm">
               🔒 This item is currently reserved
             </div>
           )}
 
-          <h1 className="text-3xl font-bold text-foreground">{displayName}</h1>
+          <h1 className="text-xl font-bold text-foreground sm:text-3xl">{displayName}</h1>
 
           {product.short_description && (
-            <p className="mt-3 text-base text-accent-foreground/80">{product.short_description}</p>
+            <p className="mt-2 text-sm text-accent-foreground/80 sm:mt-3 sm:text-base">{product.short_description}</p>
           )}
-          <p className="mt-4 text-4xl font-bold text-primary">
+          <p className="mt-3 text-2xl font-bold text-primary sm:mt-4 sm:text-4xl">
             KSh {Number(product.offer_price).toLocaleString()}
           </p>
 
-          {/* Unit availability */}
           {groupInfo && groupInfo.total > 1 && (
-            <p className="mt-2 text-sm text-muted-foreground">
+            <p className="mt-1.5 text-xs text-muted-foreground sm:mt-2 sm:text-sm">
               {groupInfo.available} of {groupInfo.total} unit{groupInfo.total !== 1 ? "s" : ""} available
             </p>
           )}
 
           {product.description && (
-            <p className="mt-6 whitespace-pre-wrap text-sm leading-relaxed text-muted-foreground">
+            <p className="mt-4 whitespace-pre-wrap text-xs leading-relaxed text-muted-foreground sm:mt-6 sm:text-sm">
               {product.description}
             </p>
           )}
 
-          <div className="mt-10">
+          <div className="mt-7 sm:mt-10">
             {product.is_reserved ? (
               <CounterOfferForm product={product} onSuccess={() => router.invalidate()} />
             ) : (
