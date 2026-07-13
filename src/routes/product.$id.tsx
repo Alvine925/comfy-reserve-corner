@@ -152,14 +152,22 @@ function ProductPage() {
             <p className="text-2xl font-bold text-emerald-600 sm:text-4xl">
               KSh {Number(product.offer_price).toLocaleString()}
             </p>
-            {(product as any).acquisition_price != null && (
-              <div className="mt-2 inline-flex items-center gap-2 rounded-md bg-amber-50 px-3 py-1.5">
-                <span className="text-[11px] font-semibold uppercase tracking-wide text-amber-500">Acq. price</span>
-                <span className="text-sm font-bold text-amber-800">
-                  KSh {Number((product as any).acquisition_price).toLocaleString()}
-                </span>
-              </div>
-            )}
+            {(product as any).acquisition_price != null && (() => {
+              const dep = Math.round((1 - Number(product.offer_price) / Number((product as any).acquisition_price)) * 100);
+              return (
+                <div className="mt-2 flex flex-wrap items-center gap-2">
+                  <div className="inline-flex items-center gap-2 rounded-md bg-amber-50 px-3 py-1.5">
+                    <span className="text-[11px] font-semibold uppercase tracking-wide text-amber-500">Acq. price</span>
+                    <span className="text-sm font-bold text-amber-800">
+                      KSh {Number((product as any).acquisition_price).toLocaleString()}
+                    </span>
+                  </div>
+                  <span className="rounded-full bg-red-100 px-2.5 py-1 text-xs font-bold text-red-600">
+                    -{dep}% depreciated
+                  </span>
+                </div>
+              );
+            })()}
           </div>
 
           {groupInfo && groupInfo.total > 1 && (

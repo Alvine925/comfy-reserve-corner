@@ -505,11 +505,19 @@ function Browse() {
                   <p className="mt-1 text-xs font-bold text-emerald-600 sm:mt-1.5 sm:text-sm">
                     KSh {Number(p.offer_price).toLocaleString()}
                   </p>
-                  {(p as any).acquisition_price != null && (
-                    <p className="mt-0.5 text-[10px] text-amber-600 sm:text-xs">
-                      Acq: KSh {Number((p as any).acquisition_price).toLocaleString()}
-                    </p>
-                  )}
+                  {(p as any).acquisition_price != null && (() => {
+                    const dep = Math.round((1 - Number(p.offer_price) / Number((p as any).acquisition_price)) * 100);
+                    return (
+                      <div className="mt-0.5 flex items-center gap-1.5 flex-wrap">
+                        <p className="text-[10px] text-amber-600 sm:text-xs">
+                          Acq: KSh {Number((p as any).acquisition_price).toLocaleString()}
+                        </p>
+                        <span className="rounded-full bg-red-100 px-1.5 py-px text-[9px] font-bold text-red-600 sm:text-[10px]">
+                          -{dep}% dep.
+                        </span>
+                      </div>
+                    );
+                  })()}
                 </div>
               </Link>
             ))}
