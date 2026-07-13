@@ -566,3 +566,141 @@ export const updateCounterOfferStatus = createServerFn({ method: "POST" })
     if (error) throw new Error(error.message);
     return { ok: true };
   });
+
+// ─────────────────────────────────────────────
+// Public: all available units for a product name group.
+// Used by the serial-number picker on the product page.
+// ─────────────────────────────────────────────
+export const getAvailableUnitsForProduct = createServerFn({ method: "GET" })
+  .inputValidator((d: unknown) => z.object({ id: z.string().uuid() }).parse(d))
+  .handler(async ({ data }) => {
+    const { createClient } = await import("@supabase/supabase-js");
+    const client = createClient(
+      process.env.SUPABASE_URL!,
+      process.env.SUPABASE_PUBLISHABLE_KEY!,
+      { auth: { storage: undefined, persistSession: false, autoRefreshToken: false } },
+    );
+
+    const { data: product, error: pErr } = await client
+      .from("products")
+      .select("name,offer_price,image_url,category")
+      .eq("id", data.id)
+      .eq("is_active", true)
+      .maybeSingle();
+    if (pErr) throw new Error(pErr.message);
+    if (!product) return { units: [], name: "", price: 0, imageUrl: null, category: null };
+
+    const { data: units, error: uErr } = await client
+      .from("products")
+      .select("id,serial_number")
+      .eq("name", product.name)
+      .eq("is_active", true)
+      .eq("is_reserved", false)
+      .order("serial_number", { ascending: true });
+    if (uErr) throw new Error(uErr.message);
+
+    return {
+      units: (units ?? []).map((u: any) => ({
+        id: u.id as string,
+        serial_number: (u.serial_number ?? null) as string | null,
+      })),
+      name: product.name as string,
+      price: Number(product.offer_price),
+      imageUrl: (product.image_url ?? null) as string | null,
+      category: (product.category ?? null) as string | null,
+    };
+  });
+
+// ─────────────────────────────────────────────
+// Public: reserve a cart of specific units in one go.
+// Each item specifies the exact unit (by id) the customer chose.
+// ─────────────────────────────────────────────
+const cartReservationSchema = z.object({
+  items: z.array(z.object({ unit_id: z.string().uuid() })).min(1).max(50),
+  customer_name: z.string().trim().min(1).max(120),
+  customer_email: z.string().trim().email().max(255),
+  customer_phone: z.string().trim().min(3).max(40),
+  notes: z.string().max(1000).optional(),
+});
+
+export const createCartReservation = createServerFn({ method: "POST" })
+  .inputValidator((d: unknown) => cartReservationSchema.parse(d))
+  .handler(async ({ data }) => {
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { sendBrevoEmail, reservationConfirmationHtml, adminNotificationHtml } = await import(
+      "./email.server"
+    );
+
+    const unitIds = data.items.map((i) => i.unit_id);
+
+    // Fetch all units and validate availability
+    const { data: units, error: uErr } = await supabaseAdmin
+      .from("products")
+      .select("id,name,offer_price,serial_number,is_active,is_reserved")
+      .in("id", unitIds);
+    if (uErr) throw new Error(uErr.message);
+
+    for (const uid of unitIds) {
+      const unit = (units ?? []).find((u: any) => u.id === uid);
+      if (!unit || !unit.is_active) throw new Error(`A selected item is no longer available`);
+      if (unit.is_reserved)
+        throw new Error(
+          `Unit ${unit.serial_number ?? uid} was just reserved by someone else — please remove it from your cart`,
+        );
+    }
+
+    // Insert one reservation record per unit
+    const reservationRows = unitIds.map((uid) => ({
+      product_id: uid,
+      customer_name: data.customer_name,
+      customer_email: data.customer_email,
+      customer_phone: data.customer_phone,
+      notes: data.notes ?? null,
+      status: "pending",
+      quantity: 1,
+    }));
+
+    const { error: rErr } = await supabaseAdmin.from("reservations").insert(reservationRows);
+    if (rErr) throw new Error(rErr.message);
+
+    // Mark all units reserved
+    await supabaseAdmin.from("products").update({ is_reserved: true }).in("id", unitIds);
+
+    const serialNumbers = (units ?? [])
+      .map((u: any) => u.serial_number as string | null)
+      .filter(Boolean) as string[];
+
+    const productNames = [...new Set((units ?? []).map((u: any) => u.name as string))];
+    const totalPrice = (units ?? []).reduce((sum: number, u: any) => sum + Number(u.offer_price), 0);
+
+    await sendBrevoEmail({
+      to: { email: data.customer_email, name: data.customer_name },
+      subject: `Reservation confirmed: ${productNames.length === 1 ? productNames[0] : `${unitIds.length} items`}`,
+      htmlContent: reservationConfirmationHtml({
+        customerName: data.customer_name,
+        productName: productNames.join(", "),
+        offerPrice: totalPrice,
+        quantity: unitIds.length,
+        serialNumbers,
+      }),
+    });
+
+    const adminEmail = process.env.ADMIN_NOTIFY_EMAIL;
+    if (adminEmail) {
+      await sendBrevoEmail({
+        to: { email: adminEmail },
+        subject: `New cart reservation: ${unitIds.length} item(s) from ${data.customer_name}`,
+        htmlContent: adminNotificationHtml({
+          productName: productNames.join(", "),
+          customerName: data.customer_name,
+          customerEmail: data.customer_email,
+          customerPhone: data.customer_phone,
+          notes: data.notes,
+          quantity: unitIds.length,
+          serialNumbers,
+        }),
+      });
+    }
+
+    return { ok: true, serialNumbers };
+  });
