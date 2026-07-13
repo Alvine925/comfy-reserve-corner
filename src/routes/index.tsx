@@ -18,10 +18,16 @@ const CATEGORIES = [
     match: (n: string) => /chair|stool|seat/i.test(n),
   },
   {
+    key: "desks",
+    label: "Desks",
+    icon: "🖥️",
+    match: (n: string) => /desk/i.test(n),
+  },
+  {
     key: "tables",
     label: "Tables",
     icon: "🪵",
-    match: (n: string) => /table|desk/i.test(n),
+    match: (n: string) => /table/i.test(n) && !/desk/i.test(n),
   },
   {
     key: "sofas",
@@ -46,9 +52,7 @@ const CATEGORIES = [
     label: "Other",
     icon: "📦",
     match: (n: string) =>
-      !/(chair|stool|seat|table|desk|sofa|couch|lounge|cabinet|shelf|drawer|storage|wardrobe|bookcase|bed|mattress)/i.test(
-        n,
-      ),
+      !/(chair|stool|seat|table|desk|sofa|couch|lounge|cabinet|shelf|drawer|storage|wardrobe|bookcase|bed|mattress)/i.test(n),
   },
 ] as const;
 
