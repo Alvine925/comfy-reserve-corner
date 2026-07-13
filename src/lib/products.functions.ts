@@ -207,6 +207,17 @@ export const updateProduct = createServerFn({ method: "POST" })
   )
   .handler(async ({ data, context }) => {
     await assertAdmin(context);
+
+    // Get the current product's name so we can find siblings before any name change
+    const { data: current, error: cErr } = await context.supabase
+      .from("products")
+      .select("name")
+      .eq("id", data.id)
+      .maybeSingle();
+    if (cErr) throw new Error(cErr.message);
+    const oldName = current?.name;
+
+    // Update the target product
     const { data: row, error } = await context.supabase
       .from("products")
       .update(data.patch)
@@ -214,6 +225,18 @@ export const updateProduct = createServerFn({ method: "POST" })
       .select()
       .single();
     if (error) throw new Error(error.message);
+
+    // Propagate all edits to every other unit with the same (old) name.
+    // Each unit keeps its own serial_number and id; everything else syncs.
+    if (oldName) {
+      const { error: syncErr } = await context.supabase
+        .from("products")
+        .update(data.patch)
+        .eq("name", oldName)
+        .neq("id", data.id);
+      if (syncErr) throw new Error(syncErr.message);
+    }
+
     return row;
   });
 

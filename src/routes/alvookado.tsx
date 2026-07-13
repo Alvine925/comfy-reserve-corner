@@ -404,19 +404,14 @@ function ProductDialog({
         is_reserved: form.is_reserved,
       };
       if (product) {
+        // updateProduct now propagates all field changes to every sibling unit automatically
+        const newUnits = addQty > 1 ? addQty - 1 : 0; // addQty is total incl. this unit
         await updateFn({ data: { id: product.id, patch: payload } });
-        // If admin wants more units, create them now
-        if (addQty > 0) {
-          const extra = await createFn({ data: { ...payload, quantity: addQty } });
-          toast.success(`Updated + added ${extra.count} new unit${extra.count > 1 ? "s" : ""} (${extra.firstSerial} → ${extra.lastSerial})`);
-        } else if (imageUrls.length > 0) {
-          try {
-            const sync = await syncFn({ data: { product_id: product.id } });
-            if (sync.synced > 0) toast.success(`Updated — images synced to ${sync.synced} other unit${sync.synced > 1 ? "s" : ""}`);
-            else toast.success("Updated");
-          } catch { toast.success("Updated"); }
+        if (newUnits > 0) {
+          const extra = await createFn({ data: { ...payload, quantity: newUnits } });
+          toast.success(`Updated all units + created ${extra.count} new unit${extra.count > 1 ? "s" : ""} (${extra.firstSerial} → ${extra.lastSerial})`);
         } else {
-          toast.success("Updated");
+          toast.success("Updated — changes applied to all units in this group");
         }
       } else {
         const result = await createFn({ data: { ...payload, quantity } });
