@@ -204,19 +204,17 @@ function SerialPickerPanel({
   const { addItem, openCart, items } = useCart();
   const units = availableUnits?.units ?? [];
 
-  // Pre-select the current product's unit if present, else the first available
-  const defaultUnit =
-    units.find((u) => u.id === product.id) ?? units[0] ?? null;
+  const defaultUnit = units.find((u) => u.id === product.id) ?? units[0] ?? null;
+  const [selectedUnitId, setSelectedUnitId] = useState<string>(defaultUnit?.id ?? "");
 
-  const [selectedUnitId, setSelectedUnitId] = useState<string>(
-    defaultUnit?.id ?? "",
-  );
-
+  const cartUnitIds = new Set(items.map((i) => i.unitId));
   const selectedUnit = units.find((u) => u.id === selectedUnitId) ?? null;
-  const alreadyInCart = items.some((i) => i.unitId === selectedUnitId);
+  const selectedInCart = cartUnitIds.has(selectedUnitId);
+  const allInCart = units.length > 0 && units.every((u) => cartUnitIds.has(u.id));
+  const cartCount = units.filter((u) => cartUnitIds.has(u.id)).length;
 
   function handleAddToCart() {
-    if (!selectedUnit) return;
+    if (!selectedUnit || selectedInCart) return;
     addItem({
       unitId: selectedUnit.id,
       serialNumber: selectedUnit.serial_number ?? selectedUnit.id,
@@ -226,54 +224,49 @@ function SerialPickerPanel({
       imageUrl: product.image_url ?? availableUnits?.imageUrl ?? null,
     });
     toast.success(
-      <div className="flex items-center gap-2">
-        <CheckCircle2 className="h-4 w-4 text-green-500" />
-        <span>
-          Added <strong>{cleanName(product.name)}</strong> (S/N:{" "}
-          {selectedUnit.serial_number}) to cart
-        </span>
-      </div>,
-      {
-        action: {
-          label: "View cart",
-          onClick: openCart,
-        },
-      },
+      `Added S/N ${selectedUnit.serial_number} to cart`,
+      { action: { label: "View cart", onClick: openCart } },
     );
+    // Auto-advance to next unit not yet in cart
+    const next = units.find((u) => u.id !== selectedUnit.id && !cartUnitIds.has(u.id));
+    if (next) setSelectedUnitId(next.id);
   }
 
   if (units.length === 0) {
     return (
-      <div className="rounded-lg border border-dashed p-6 text-center text-sm text-muted-foreground">
+      <p className="py-6 text-sm text-muted-foreground">
         No units currently available to reserve.
-      </div>
+      </p>
     );
   }
 
   return (
-    <div className="space-y-5">
+    <div className="space-y-6">
       <div>
         <h2 className="text-xl font-semibold text-foreground">Reserve this item</h2>
         <p className="mt-1 text-sm text-muted-foreground">
-          Select a specific unit, then add it to your cart. You can reserve items from multiple categories in one go.
+          Pick a serial number, add it to your cart. Mix items from any category — checkout once.
         </p>
       </div>
 
-      {/* Serial number selector */}
-      <div className="space-y-1.5">
-        <Label htmlFor="serial-select">
-          Select unit — serial number
-          <span className="ml-1.5 text-xs font-normal text-muted-foreground">
-            ({units.length} available)
+      {/* Serial selector */}
+      <div className="space-y-2">
+        <div className="flex items-baseline justify-between">
+          <Label htmlFor="serial-select">Serial number</Label>
+          <span className="text-xs text-muted-foreground">
+            {units.length - cartCount} of {units.length} unit{units.length !== 1 ? "s" : ""} available
+            {cartCount > 0 && ` · ${cartCount} in cart`}
           </span>
-        </Label>
+        </div>
+
         {units.length === 1 ? (
-          /* Only one unit — show it as a badge, no picker needed */
-          <div className="flex items-center gap-2 rounded-lg border border-border bg-muted/30 px-4 py-2.5">
+          <div className="flex items-center justify-between rounded-lg border border-border px-4 py-3">
             <span className="font-mono text-sm font-semibold tracking-wide text-foreground">
               {units[0].serial_number ?? "—"}
             </span>
-            <span className="text-xs text-muted-foreground">(only unit available)</span>
+            {cartUnitIds.has(units[0].id) && (
+              <span className="text-xs text-muted-foreground">In cart</span>
+            )}
           </div>
         ) : (
           <div className="relative">
@@ -281,38 +274,55 @@ function SerialPickerPanel({
               id="serial-select"
               value={selectedUnitId}
               onChange={(e) => setSelectedUnitId(e.target.value)}
-              className="w-full appearance-none rounded-lg border border-input bg-background px-4 py-2.5 pr-10 font-mono text-sm text-foreground shadow-sm focus:outline-none focus:ring-2 focus:ring-primary"
+              className="w-full appearance-none rounded-lg border border-input bg-background px-4 py-2.5 pr-10 font-mono text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
             >
-              {units.map((u) => (
-                <option key={u.id} value={u.id}>
-                  {u.serial_number ?? u.id}
-                </option>
-              ))}
+              {units.map((u) => {
+                const inCart = cartUnitIds.has(u.id);
+                return (
+                  <option key={u.id} value={u.id}>
+                    {u.serial_number ?? u.id}{inCart ? "  ✓ in cart" : ""}
+                  </option>
+                );
+              })}
             </select>
             <ChevronDown className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
           </div>
         )}
       </div>
 
-      {/* Add to cart button */}
-      <Button
-        type="button"
-        onClick={handleAddToCart}
-        disabled={!selectedUnit || alreadyInCart}
-        className="w-full gap-2"
-      >
-        <ShoppingBag className="h-4 w-4" />
-        {alreadyInCart ? "Already in cart" : "Add to cart"}
-      </Button>
+      {/* Add to cart */}
+      {allInCart ? (
+        <div className="space-y-3">
+          <p className="text-sm text-muted-foreground">
+            All {units.length} unit{units.length !== 1 ? "s" : ""} of this item are in your cart.
+          </p>
+          <Button type="button" variant="outline" className="w-full gap-2" onClick={openCart}>
+            <ShoppingBag className="h-4 w-4" />
+            View cart & checkout
+          </Button>
+        </div>
+      ) : (
+        <div className="space-y-3">
+          <Button
+            type="button"
+            onClick={handleAddToCart}
+            disabled={selectedInCart}
+            className="w-full gap-2"
+          >
+            <ShoppingBag className="h-4 w-4" />
+            {selectedInCart ? "This unit is already in cart — pick another" : "Add to cart"}
+          </Button>
 
-      {alreadyInCart && (
-        <button
-          type="button"
-          onClick={openCart}
-          className="w-full text-center text-sm text-primary underline-offset-4 hover:underline"
-        >
-          View cart & checkout →
-        </button>
+          {cartCount > 0 && (
+            <button
+              type="button"
+              onClick={openCart}
+              className="w-full text-center text-sm text-muted-foreground hover:text-foreground transition-colors"
+            >
+              {cartCount} item{cartCount !== 1 ? "s" : ""} in cart · checkout or keep adding →
+            </button>
+          )}
+        </div>
       )}
     </div>
   );

@@ -20,14 +20,12 @@ export const Route = createFileRoute("/")({
       { title: "Furniture for Sale — Browse & Reserve" },
       {
         name: "description",
-        content:
-          "Browse quality pre-owned furniture and reserve your favourite pieces online.",
+        content: "Browse quality pre-owned furniture and reserve your favourite pieces online.",
       },
       { property: "og:title", content: "Furniture for Sale — Browse & Reserve" },
       {
         property: "og:description",
-        content:
-          "Browse quality pre-owned furniture and reserve your favourite pieces online.",
+        content: "Browse quality pre-owned furniture and reserve your favourite pieces online.",
       },
     ],
   }),
@@ -48,7 +46,6 @@ function Browse() {
   const [availability, setAvailability] = useState<AvailabilityFilter>("all");
   const [query, setQuery] = useState("");
 
-  // Build category tiles — only show categories that have at least one product
   const tiles = useMemo(() => {
     return PRODUCT_CATEGORIES.map((cat) => {
       const items = products.filter((p) => (p as any).category === cat.value);
@@ -57,13 +54,6 @@ function Browse() {
     }).filter((c) => c.count > 0);
   }, [products]);
 
-  // Categories that actually have products (for filter pills)
-  const activeCategories = useMemo(
-    () => tiles.map((t) => t.value),
-    [tiles],
-  );
-
-  // Products in the selected category, filtered by search + availability
   const filteredProducts = useMemo(() => {
     if (!activeCategory) return [];
     const q = query.trim().toLowerCase();
@@ -97,7 +87,7 @@ function Browse() {
   if (!activeCategory) {
     return (
       <div className="min-h-screen bg-background">
-        <header className="border-b border-border/60 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+        <header>
           <div className="mx-auto max-w-6xl px-4 py-10">
             <h1 className="text-4xl font-bold tracking-tight text-foreground">
               Furniture Collection
@@ -107,18 +97,10 @@ function Browse() {
             </p>
           </div>
 
-          {/* Category filter pills */}
           {tiles.length > 0 && (
-            <div className="mx-auto max-w-6xl px-4 pb-4">
+            <div className="mx-auto max-w-6xl px-4 pb-6">
               <div className="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-none">
                 <SlidersHorizontal className="h-4 w-4 shrink-0 text-muted-foreground" />
-                <FilterPill
-                  active={false}
-                  label="All categories"
-                  icon={<LayoutGrid className="h-3.5 w-3.5" />}
-                  onClick={() => {}}
-                  disabled
-                />
                 {tiles.map((cat) => {
                   const Icon = CATEGORY_ICON_COMPONENTS[cat.value] ?? LayoutGrid;
                   return (
@@ -137,24 +119,24 @@ function Browse() {
           )}
         </header>
 
-        <main className="mx-auto max-w-6xl px-4 py-8 pb-20">
+        <main className="mx-auto max-w-6xl px-4 pb-28">
           {tiles.length === 0 ? (
-            <div className="rounded-lg border border-dashed p-12 text-center text-muted-foreground">
+            <p className="py-16 text-center text-sm text-muted-foreground">
               No products available yet.
-            </div>
+            </p>
           ) : (
-            <div className="grid grid-cols-2 gap-5 sm:grid-cols-3">
+            <div className="grid grid-cols-2 gap-x-6 gap-y-10 sm:grid-cols-3">
               {tiles.map((cat) => {
-                const Icon =
-                  CATEGORY_ICON_COMPONENTS[cat.value] ?? LayoutGrid;
+                const Icon = CATEGORY_ICON_COMPONENTS[cat.value] ?? LayoutGrid;
                 return (
                   <button
                     key={cat.value}
                     type="button"
                     onClick={() => selectCategory(cat.value)}
-                    className="group relative overflow-hidden rounded-2xl border border-border bg-card text-left transition-all hover:shadow-lg hover:border-primary/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+                    className="group text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 rounded-sm"
                   >
-                    <div className="aspect-[4/3] w-full overflow-hidden bg-muted/40">
+                    {/* Image — no card box, just the image itself */}
+                    <div className="aspect-[4/3] w-full overflow-hidden rounded-xl bg-muted/30">
                       {cat.image ? (
                         <img
                           src={cat.image}
@@ -162,24 +144,26 @@ function Browse() {
                           className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
                         />
                       ) : (
-                        <div className="flex h-full w-full flex-col items-center justify-center gap-3 bg-gradient-to-br from-muted/60 to-muted/20">
-                          <div className="rounded-2xl bg-background/70 p-4 shadow-sm ring-1 ring-border/40 backdrop-blur-sm transition-transform duration-300 group-hover:scale-110">
-                            <Icon className="h-10 w-10 text-foreground/70" strokeWidth={1.5} />
-                          </div>
+                        <div className="flex h-full w-full items-center justify-center bg-muted/20 transition-colors group-hover:bg-muted/40">
+                          <Icon
+                            className="h-12 w-12 text-foreground/30 transition-all duration-300 group-hover:scale-110 group-hover:text-foreground/50"
+                            strokeWidth={1.25}
+                          />
                         </div>
                       )}
                     </div>
-                    <div className="flex items-center justify-between px-4 py-3">
+                    {/* Label — direct on background, no card wrapper */}
+                    <div className="mt-3 flex items-start justify-between gap-2">
                       <div>
-                        <p className="flex items-center gap-1.5 font-semibold text-foreground">
-                          <Icon className="h-4 w-4 text-muted-foreground" strokeWidth={1.75} />
+                        <p className="flex items-center gap-1.5 text-sm font-semibold text-foreground">
+                          <Icon className="h-3.5 w-3.5 shrink-0 text-muted-foreground" strokeWidth={1.75} />
                           {cat.label}
                         </p>
-                        <p className="text-xs text-muted-foreground">
+                        <p className="mt-0.5 text-xs text-muted-foreground">
                           {cat.count} item{cat.count !== 1 ? "s" : ""}
                         </p>
                       </div>
-                      <span className="text-lg text-muted-foreground transition-colors group-hover:text-foreground">
+                      <span className="mt-0.5 text-sm text-muted-foreground transition-colors group-hover:text-foreground">
                         →
                       </span>
                     </div>
@@ -194,7 +178,7 @@ function Browse() {
   }
 
   // ── Product list within a category ────────────────────────────
-  const Icon = CATEGORY_ICON_COMPONENTS[activeCategory] ?? LayoutGrid;
+  const CatIcon = CATEGORY_ICON_COMPONENTS[activeCategory] ?? LayoutGrid;
   const availableCount = products.filter(
     (p) => (p as any).category === activeCategory && !p.is_reserved,
   ).length;
@@ -204,31 +188,25 @@ function Browse() {
 
   return (
     <div className="min-h-screen bg-background">
-      <header className="border-b border-border/60 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-        <div className="mx-auto max-w-6xl px-4 pt-6">
-          {/* Back + breadcrumb */}
+      <header>
+        <div className="mx-auto max-w-6xl px-4 pt-8 pb-6">
           <button
             type="button"
             onClick={clearCategory}
-            className="mb-4 flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground transition-colors"
+            className="mb-5 flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground transition-colors"
           >
             ← All categories
           </button>
 
-          {/* Category heading + search */}
-          <div className="flex flex-col gap-4 pb-4 sm:flex-row sm:items-start sm:justify-between">
-            <div className="flex items-center gap-3">
-              <div className="rounded-xl bg-muted p-2.5">
-                <Icon className="h-6 w-6 text-foreground/80" strokeWidth={1.75} />
-              </div>
-              <div>
-                <h1 className="text-2xl font-bold tracking-tight text-foreground">
-                  {activeTile?.label ?? categoryLabel(activeCategory)}
-                </h1>
-                <p className="text-sm text-muted-foreground">
-                  {filteredProducts.length} item{filteredProducts.length !== 1 ? "s" : ""}
-                </p>
-              </div>
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+            <div className="flex items-center gap-2.5">
+              <CatIcon className="h-5 w-5 text-muted-foreground" strokeWidth={1.75} />
+              <h1 className="text-2xl font-bold tracking-tight text-foreground">
+                {activeTile?.label ?? categoryLabel(activeCategory)}
+              </h1>
+              <span className="text-sm text-muted-foreground">
+                · {filteredProducts.length}
+              </span>
             </div>
             <div className="relative max-w-xs w-full sm:w-auto">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
@@ -242,24 +220,20 @@ function Browse() {
             </div>
           </div>
 
-          {/* Category switcher + availability sub-filters */}
-          <div className="flex flex-wrap items-center gap-x-6 gap-y-2 pb-4">
-            {/* Jump to another category */}
+          {/* Sub-filters row */}
+          <div className="mt-4 flex flex-wrap items-center gap-x-5 gap-y-2">
             <div className="flex items-center gap-1.5 overflow-x-auto scrollbar-none">
-              <span className="shrink-0 text-xs font-medium text-muted-foreground">
-                Category:
-              </span>
+              <span className="shrink-0 text-xs text-muted-foreground">Jump:</span>
               {tiles
                 .filter((t) => t.value !== activeCategory)
                 .map((cat) => {
-                  const CatIcon =
-                    CATEGORY_ICON_COMPONENTS[cat.value] ?? LayoutGrid;
+                  const JIcon = CATEGORY_ICON_COMPONENTS[cat.value] ?? LayoutGrid;
                   return (
                     <FilterPill
                       key={cat.value}
                       active={false}
                       label={cat.label}
-                      icon={<CatIcon className="h-3.5 w-3.5" />}
+                      icon={<JIcon className="h-3.5 w-3.5" />}
                       count={cat.count}
                       onClick={() => selectCategory(cat.value)}
                     />
@@ -267,86 +241,61 @@ function Browse() {
                 })}
             </div>
 
-            {/* Availability filter */}
-            <div className="flex items-center gap-1.5 shrink-0">
-              <span className="text-xs font-medium text-muted-foreground">
-                Show:
-              </span>
-              <FilterPill
-                active={availability === "all"}
-                label="All"
-                onClick={() => setAvailability("all")}
-              />
-              <FilterPill
-                active={availability === "available"}
-                label="Available"
-                count={availableCount}
-                onClick={() => setAvailability("available")}
-              />
-              <FilterPill
-                active={availability === "reserved"}
-                label="Reserved"
-                count={reservedCount}
-                onClick={() => setAvailability("reserved")}
-              />
+            <div className="flex items-center gap-1.5 shrink-0 ml-auto">
+              <span className="text-xs text-muted-foreground">Show:</span>
+              <FilterPill active={availability === "all"} label="All" onClick={() => setAvailability("all")} />
+              <FilterPill active={availability === "available"} label="Available" count={availableCount} onClick={() => setAvailability("available")} />
+              <FilterPill active={availability === "reserved"} label="Reserved" count={reservedCount} onClick={() => setAvailability("reserved")} />
             </div>
           </div>
         </div>
       </header>
 
-      <main className="mx-auto max-w-6xl px-4 py-8 pb-20">
+      <main className="mx-auto max-w-6xl px-4 pb-28">
         {filteredProducts.length === 0 ? (
-          <div className="rounded-lg border border-dashed p-12 text-center text-muted-foreground">
+          <p className="py-16 text-center text-sm text-muted-foreground">
             No items match your filters.
-          </div>
+          </p>
         ) : (
-          <div className="grid grid-cols-1 gap-x-8 gap-y-10 sm:grid-cols-2 lg:grid-cols-3">
+          <div className="grid grid-cols-2 gap-x-6 gap-y-10 sm:grid-cols-2 lg:grid-cols-3">
             {filteredProducts.map((p) => (
               <Link
                 key={p.id}
                 to="/product/$id"
                 params={{ id: p.id }}
-                className="group block"
+                className="group block focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 rounded-sm"
               >
-                <div className="relative aspect-square overflow-hidden rounded-xl bg-muted/30">
+                {/* Image — no card wrapper */}
+                <div className="relative aspect-square overflow-hidden rounded-xl bg-muted/25">
                   {p.image_url ? (
                     <img
                       src={p.image_url}
-                      alt={p.name}
+                      alt={cleanName(p.name)}
                       className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
                       loading="lazy"
                     />
                   ) : (
-                    <div className="flex h-full w-full items-center justify-center">
-                      <Icon className="h-12 w-12 text-muted-foreground/40" strokeWidth={1.25} />
+                    <div className="flex h-full w-full items-center justify-center bg-muted/20">
+                      <CatIcon className="h-10 w-10 text-muted-foreground/30" strokeWidth={1.25} />
                     </div>
                   )}
                   {p.is_reserved && (
-                    <span className="absolute top-2 right-2 rounded-full bg-background/90 border border-border px-2 py-0.5 text-xs text-muted-foreground backdrop-blur-sm">
+                    <span className="absolute top-2 right-2 rounded-full bg-black/60 px-2 py-0.5 text-[11px] font-medium text-white backdrop-blur-sm">
                       Reserved
                     </span>
                   )}
                 </div>
-                <div className="pt-3">
-                  <div className="flex items-start justify-between gap-2">
-                    <h2 className="text-base font-semibold text-foreground leading-snug">
-                      {p.name}
-                    </h2>
-                  </div>
-                  {(p as any).serial_number && (
-                    <span className="mt-1 inline-flex items-center gap-1 rounded bg-muted px-2 py-0.5 font-mono text-[11px] text-muted-foreground">
-                      <span className="text-[9px] uppercase tracking-wider">
-                        S/N
-                      </span>
-                      {(p as any).serial_number}
-                    </span>
-                  )}
+                {/* Text — directly on page background */}
+                <div className="mt-3">
+                  <h2 className="text-sm font-semibold leading-snug text-foreground group-hover:text-primary transition-colors">
+                    {cleanName(p.name)}
+                  </h2>
                   {p.short_description && (
-                    <p className="mt-1 line-clamp-2 text-xs text-muted-foreground">
+                    <p className="mt-0.5 line-clamp-1 text-xs text-muted-foreground">
                       {p.short_description}
                     </p>
                   )}
-                  <p className="mt-2 text-base font-bold text-primary">
+                  <p className="mt-1.5 text-sm font-bold text-foreground">
                     KSh {Number(p.offer_price).toLocaleString()}
                   </p>
                 </div>
@@ -359,7 +308,7 @@ function Browse() {
   );
 }
 
-// ── Shared filter pill component ───────────────────────────────
+// ── Filter pill ────────────────────────────────────────────────
 interface FilterPillProps {
   active: boolean;
   label: string;
@@ -378,9 +327,9 @@ function FilterPill({ active, label, icon, count, onClick, disabled }: FilterPil
       className={cn(
         "inline-flex shrink-0 items-center gap-1.5 rounded-full border px-3 py-1 text-xs font-medium transition-all",
         active
-          ? "border-primary bg-primary text-primary-foreground shadow-sm"
-          : "border-border bg-background text-muted-foreground hover:border-foreground/30 hover:text-foreground",
-        disabled && "cursor-default opacity-60",
+          ? "border-foreground bg-foreground text-background"
+          : "border-border bg-transparent text-muted-foreground hover:border-foreground/40 hover:text-foreground",
+        disabled && "cursor-default opacity-50",
       )}
     >
       {icon}
@@ -389,7 +338,7 @@ function FilterPill({ active, label, icon, count, onClick, disabled }: FilterPil
         <span
           className={cn(
             "rounded-full px-1.5 py-px text-[10px] font-semibold tabular-nums",
-            active ? "bg-primary-foreground/20 text-primary-foreground" : "bg-muted text-muted-foreground",
+            active ? "bg-background/20 text-background" : "text-muted-foreground",
           )}
         >
           {count}
