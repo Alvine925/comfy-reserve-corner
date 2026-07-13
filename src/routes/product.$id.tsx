@@ -140,22 +140,22 @@ function ProductPage() {
           )}
 
           {/* Title */}
-          <h1 className="text-xl font-bold tracking-tight text-slate-900 sm:text-3xl">{displayName}</h1>
+          <h1 className="text-xl font-bold tracking-tight text-violet-900 sm:text-3xl">{displayName}</h1>
 
           {/* Short description */}
           {product.short_description && (
-            <p className="mt-2 text-sm text-slate-500 sm:mt-3 sm:text-base">{product.short_description}</p>
+            <p className="mt-2 text-sm text-teal-600 sm:mt-3 sm:text-base">{product.short_description}</p>
           )}
 
           {/* Pricing block */}
           <div className="mt-3 sm:mt-4">
-            <p className="text-2xl font-bold text-emerald-700 sm:text-4xl">
+            <p className="text-2xl font-bold text-emerald-600 sm:text-4xl">
               KSh {Number(product.offer_price).toLocaleString()}
             </p>
             {(product as any).acquisition_price != null && (
-              <div className="mt-2 inline-flex items-center gap-2 rounded-md bg-slate-100 px-3 py-1.5">
-                <span className="text-[11px] font-semibold uppercase tracking-wide text-slate-400">Acq. price</span>
-                <span className="text-sm font-bold text-slate-700">
+              <div className="mt-2 inline-flex items-center gap-2 rounded-md bg-amber-50 px-3 py-1.5">
+                <span className="text-[11px] font-semibold uppercase tracking-wide text-amber-500">Acq. price</span>
+                <span className="text-sm font-bold text-amber-800">
                   KSh {Number((product as any).acquisition_price).toLocaleString()}
                 </span>
               </div>
@@ -163,14 +163,14 @@ function ProductPage() {
           </div>
 
           {groupInfo && groupInfo.total > 1 && (
-            <p className="mt-1.5 text-xs text-slate-400 sm:mt-2 sm:text-sm">
+            <p className="mt-1.5 text-xs text-sky-500 sm:mt-2 sm:text-sm">
               {groupInfo.available} of {groupInfo.total} unit{groupInfo.total !== 1 ? "s" : ""} available
             </p>
           )}
 
           {/* Long description */}
           {product.description && (
-            <p className="mt-4 whitespace-pre-wrap text-xs leading-relaxed text-slate-500 sm:mt-6 sm:text-sm">
+            <p className="mt-4 whitespace-pre-wrap text-xs leading-relaxed text-indigo-600 sm:mt-6 sm:text-sm">
               {product.description}
             </p>
           )}
@@ -310,6 +310,7 @@ function SerialPickerPanel({
             </select>
             <ChevronDown className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
           </div>
+          </>
         )}
       </div>
 
