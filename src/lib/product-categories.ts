@@ -1,20 +1,6 @@
 // Shared product category definitions used by admin dashboard and browse page.
 // Keep this the single source of truth — import from here everywhere.
 
-import {
-  Armchair,
-  Monitor,
-  Briefcase,
-  Building2,
-  Users,
-  Utensils,
-  Sofa,
-  Archive,
-  BedDouble,
-  Package,
-  type LucideIcon,
-} from "lucide-react";
-
 export const PRODUCT_CATEGORIES = [
   { value: "chairs",            label: "Chairs" },
   { value: "office_desks",      label: "Office Desks" },
@@ -35,21 +21,7 @@ export function categoryLabel(value: string | null | undefined): string {
   return PRODUCT_CATEGORIES.find((c) => c.value === value)?.label ?? value;
 }
 
-/** Lucide icon components per category — used in the browse page tiles */
-export const CATEGORY_ICON_COMPONENTS: Record<string, LucideIcon> = {
-  chairs:            Armchair,
-  office_desks:      Monitor,
-  executive_desks:   Briefcase,
-  reception_desks:   Building2,
-  conference_tables: Users,
-  dining_tables:     Utensils,
-  sofas:             Sofa,
-  storage:           Archive,
-  beds:              BedDouble,
-  other:             Package,
-};
-
-/** Legacy emoji map — kept for any existing references */
+/** Legacy emoji map — kept for any existing references outside the browse page */
 export const CATEGORY_ICONS: Record<string, string> = {
   chairs:            "🪑",
   office_desks:      "🖥️",

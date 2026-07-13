@@ -2,14 +2,37 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { queryOptions, useSuspenseQuery } from "@tanstack/react-query";
 import { useMemo, useState } from "react";
 import { listActiveProducts } from "@/lib/products.functions";
+import { PRODUCT_CATEGORIES, categoryLabel } from "@/lib/product-categories";
 import {
-  PRODUCT_CATEGORIES,
-  CATEGORY_ICON_COMPONENTS,
-  categoryLabel,
-} from "@/lib/product-categories";
+  ChairIcon,
+  OfficeDeskIcon,
+  ExecutiveDeskIcon,
+  ReceptionDeskIcon,
+  ConferenceTableIcon,
+  DiningTableIcon,
+  SofaIcon,
+  StorageIcon,
+  BedIcon,
+  OtherFurnitureIcon,
+} from "@/lib/category-icons";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
 import { LayoutGrid, Search, SlidersHorizontal } from "lucide-react";
+
+type FurnitureIconComponent = (props: { className?: string; strokeWidth?: number }) => JSX.Element;
+
+const CATEGORY_ICON_COMPONENTS: Record<string, FurnitureIconComponent> = {
+  chairs:            ChairIcon,
+  office_desks:      OfficeDeskIcon,
+  executive_desks:   ExecutiveDeskIcon,
+  reception_desks:   ReceptionDeskIcon,
+  conference_tables: ConferenceTableIcon,
+  dining_tables:     DiningTableIcon,
+  sofas:             SofaIcon,
+  storage:           StorageIcon,
+  beds:              BedIcon,
+  other:             OtherFurnitureIcon,
+};
 
 const productsQuery = queryOptions({
   queryKey: ["products", "active"],
