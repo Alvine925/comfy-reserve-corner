@@ -12,7 +12,7 @@ export const listActiveProducts = createServerFn({ method: "GET" }).handler(asyn
   );
   const { data, error } = await client
     .from("products")
-    .select("id,name,short_description,description,offer_price,image_url,is_reserved")
+    .select("id,name,short_description,description,offer_price,image_url,image_urls,is_reserved")
     .eq("is_active", true)
     .order("created_at", { ascending: false });
   if (error) throw new Error(error.message);
@@ -31,7 +31,7 @@ export const getProduct = createServerFn({ method: "GET" })
     );
     const { data: row, error } = await client
       .from("products")
-      .select("id,name,short_description,description,offer_price,image_url,is_reserved,is_active")
+      .select("id,name,short_description,description,offer_price,image_url,image_urls,is_reserved,is_active")
       .eq("id", data.id)
       .eq("is_active", true)
       .maybeSingle();
