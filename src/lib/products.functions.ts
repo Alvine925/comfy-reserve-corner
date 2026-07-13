@@ -45,7 +45,7 @@ export const listActiveProducts = createServerFn({ method: "GET" }).handler(asyn
   );
   const { data, error } = await client
     .from("products")
-    .select("id,name,short_description,description,offer_price,image_url,image_urls,is_reserved,serial_number,category")
+    .select("id,name,short_description,description,offer_price,acquisition_price,image_url,image_urls,is_reserved,serial_number,category")
     .eq("is_active", true)
     .order("created_at", { ascending: false });
   if (error) throw new Error(error.message);

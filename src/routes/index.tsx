@@ -497,9 +497,19 @@ function Browse() {
                       {p.short_description}
                     </p>
                   )}
+                  {(p as any).serial_number && (
+                    <p className="mt-0.5 font-mono text-[10px] text-indigo-500 sm:text-xs">
+                      S/N: {(p as any).serial_number}
+                    </p>
+                  )}
                   <p className="mt-1 text-xs font-bold text-emerald-600 sm:mt-1.5 sm:text-sm">
                     KSh {Number(p.offer_price).toLocaleString()}
                   </p>
+                  {(p as any).acquisition_price != null && (
+                    <p className="mt-0.5 text-[10px] text-amber-600 sm:text-xs">
+                      Acq: KSh {Number((p as any).acquisition_price).toLocaleString()}
+                    </p>
+                  )}
                 </div>
               </Link>
             ))}
