@@ -9,14 +9,50 @@ const productsQuery = queryOptions({
   queryFn: () => listActiveProducts(),
 });
 
+// Category definitions — each has an emoji icon, label, and a name-matcher
 const CATEGORIES = [
-  { key: "all", label: "All", match: () => true },
-  { key: "chairs", label: "Chairs", match: (n: string) => /chair|stool|seat/i.test(n) },
-  { key: "tables", label: "Tables", match: (n: string) => /table|desk/i.test(n) },
-  { key: "sofas", label: "Sofas", match: (n: string) => /sofa|couch|lounge/i.test(n) },
-  { key: "storage", label: "Storage", match: (n: string) => /cabinet|shelf|drawer|storage|wardrobe|bookcase/i.test(n) },
-  { key: "beds", label: "Beds", match: (n: string) => /bed|mattress/i.test(n) },
+  {
+    key: "chairs",
+    label: "Chairs",
+    icon: "🪑",
+    match: (n: string) => /chair|stool|seat/i.test(n),
+  },
+  {
+    key: "tables",
+    label: "Tables",
+    icon: "🪵",
+    match: (n: string) => /table|desk/i.test(n),
+  },
+  {
+    key: "sofas",
+    label: "Sofas",
+    icon: "🛋️",
+    match: (n: string) => /sofa|couch|lounge/i.test(n),
+  },
+  {
+    key: "storage",
+    label: "Storage",
+    icon: "🗄️",
+    match: (n: string) => /cabinet|shelf|drawer|storage|wardrobe|bookcase/i.test(n),
+  },
+  {
+    key: "beds",
+    label: "Beds",
+    icon: "🛏️",
+    match: (n: string) => /bed|mattress/i.test(n),
+  },
+  {
+    key: "other",
+    label: "Other",
+    icon: "📦",
+    match: (n: string) =>
+      !/(chair|stool|seat|table|desk|sofa|couch|lounge|cabinet|shelf|drawer|storage|wardrobe|bookcase|bed|mattress)/i.test(
+        n,
+      ),
+  },
 ] as const;
+
+type CategoryKey = (typeof CATEGORIES)[number]["key"];
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -42,11 +78,32 @@ export const Route = createFileRoute("/")({
 
 function Browse() {
   const { data: products } = useSuspenseQuery(productsQuery);
+  const [activeCategory, setActiveCategory] = useState<CategoryKey | null>(null);
   const [query, setQuery] = useState("");
-  const [category, setCategory] = useState<string>("all");
 
-  const filtered = useMemo(() => {
-    const cat = CATEGORIES.find((c) => c.key === category) ?? CATEGORIES[0];
+  // Count products per category
+  const categoryCounts = useMemo(() => {
+    const counts: Record<string, number> = {};
+    for (const cat of CATEGORIES) {
+      counts[cat.key] = products.filter((p) => cat.match(p.name)).length;
+    }
+    return counts;
+  }, [products]);
+
+  // Representative image per category (first product with an image)
+  const categoryImages = useMemo(() => {
+    const images: Record<string, string | null> = {};
+    for (const cat of CATEGORIES) {
+      const hit = products.find((p) => cat.match(p.name) && p.image_url);
+      images[cat.key] = hit?.image_url ?? null;
+    }
+    return images;
+  }, [products]);
+
+  // Products filtered for the active category + search
+  const filteredProducts = useMemo(() => {
+    if (!activeCategory) return [];
+    const cat = CATEGORIES.find((c) => c.key === activeCategory)!;
     const q = query.trim().toLowerCase();
     return products.filter((p) => {
       if (!cat.match(p.name)) return false;
@@ -57,60 +114,127 @@ function Browse() {
         (p.description ?? "").toLowerCase().includes(q)
       );
     });
-  }, [products, query, category]);
+  }, [products, activeCategory, query]);
 
+  const activeCategoryLabel = CATEGORIES.find((c) => c.key === activeCategory)?.label ?? "";
+
+  // ── Category grid view ──────────────────────────────────────
+  if (!activeCategory) {
+    return (
+      <div className="min-h-screen bg-background">
+        <header>
+          <div className="mx-auto max-w-6xl px-4 py-10">
+            <h1 className="text-4xl font-bold tracking-tight text-foreground">
+              Furniture Collection
+            </h1>
+            <p className="mt-2 text-sm text-muted-foreground">
+              Browse our pieces by category and reserve the one you love.
+            </p>
+          </div>
+        </header>
+
+        <main className="mx-auto max-w-6xl px-4 pb-20">
+          <div className="grid grid-cols-2 gap-5 sm:grid-cols-3 lg:grid-cols-3">
+            {CATEGORIES.filter((c) => categoryCounts[c.key] > 0).map((cat) => (
+              <button
+                key={cat.key}
+                type="button"
+                onClick={() => {
+                  setActiveCategory(cat.key);
+                  setQuery("");
+                }}
+                className="group relative overflow-hidden rounded-2xl border border-border bg-card text-left transition-shadow hover:shadow-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+              >
+                {/* Image or gradient placeholder */}
+                <div className="aspect-[4/3] w-full overflow-hidden bg-muted/40">
+                  {categoryImages[cat.key] ? (
+                    <img
+                      src={categoryImages[cat.key]!}
+                      alt={cat.label}
+                      className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
+                    />
+                  ) : (
+                    <div className="flex h-full w-full items-center justify-center text-5xl">
+                      {cat.icon}
+                    </div>
+                  )}
+                </div>
+
+                {/* Label bar */}
+                <div className="flex items-center justify-between px-4 py-3">
+                  <div>
+                    <p className="font-semibold text-foreground">
+                      {cat.icon} {cat.label}
+                    </p>
+                    <p className="text-xs text-muted-foreground">
+                      {categoryCounts[cat.key]} item
+                      {categoryCounts[cat.key] !== 1 ? "s" : ""}
+                    </p>
+                  </div>
+                  <span className="text-muted-foreground group-hover:text-foreground transition-colors text-lg">
+                    →
+                  </span>
+                </div>
+              </button>
+            ))}
+          </div>
+        </main>
+      </div>
+    );
+  }
+
+  // ── Product list view (within a category) ───────────────────
   return (
     <div className="min-h-screen bg-background">
       <header>
         <div className="mx-auto max-w-6xl px-4 py-8">
-          <h1 className="text-4xl font-bold tracking-tight text-foreground">Furniture Collection</h1>
-          <p className="mt-2 text-sm text-muted-foreground">
-            Browse our pieces and reserve the one you love.
-          </p>
+          <button
+            type="button"
+            onClick={() => {
+              setActiveCategory(null);
+              setQuery("");
+            }}
+            className="mb-4 text-sm text-muted-foreground hover:text-foreground transition-colors"
+          >
+            ← All categories
+          </button>
 
-          <div className="mt-6 flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <h1 className="text-3xl font-bold tracking-tight text-foreground">
+                {CATEGORIES.find((c) => c.key === activeCategory)?.icon} {activeCategoryLabel}
+              </h1>
+              <p className="mt-1 text-sm text-muted-foreground">
+                {filteredProducts.length} item{filteredProducts.length !== 1 ? "s" : ""}
+              </p>
+            </div>
             <Input
               type="search"
-              placeholder="Search furniture..."
+              placeholder={`Search ${activeCategoryLabel.toLowerCase()}…`}
               value={query}
               onChange={(e) => setQuery(e.target.value)}
-              className="max-w-sm"
+              className="max-w-xs"
             />
-            <div className="flex flex-wrap gap-2">
-              {CATEGORIES.map((c) => (
-                <button
-                  key={c.key}
-                  type="button"
-                  onClick={() => setCategory(c.key)}
-                  className={`rounded-full border px-4 py-1.5 text-sm transition-colors ${
-                    category === c.key
-                      ? "border-primary bg-primary text-primary-foreground"
-                      : "border-border bg-transparent text-muted-foreground hover:text-foreground"
-                  }`}
-                >
-                  {c.label}
-                </button>
-              ))}
-            </div>
           </div>
         </div>
       </header>
 
-      <main className="mx-auto max-w-6xl px-4 pb-16">
-        {filtered.length === 0 ? (
+      <main className="mx-auto max-w-6xl px-4 pb-20">
+        {filteredProducts.length === 0 ? (
           <div className="rounded-lg border border-dashed p-12 text-center text-muted-foreground">
             No items match your search.
           </div>
         ) : (
-          <div className="grid grid-cols-1 gap-x-8 gap-y-12 sm:grid-cols-2 lg:grid-cols-3">
-            {filtered.map((p) => (
+          <div className="grid grid-cols-1 gap-x-8 gap-y-10 sm:grid-cols-2 lg:grid-cols-3">
+            {filteredProducts.map((p) => (
               <Link
                 key={p.id}
                 to="/product/$id"
                 params={{ id: p.id }}
                 className="group block"
               >
-                <div className="aspect-square overflow-hidden bg-muted/30">
+                {/* Image */}
+                <div className="aspect-square overflow-hidden rounded-xl bg-muted/30">
                   {p.image_url ? (
                     <img
                       src={p.image_url}
@@ -124,21 +248,34 @@ function Browse() {
                     </div>
                   )}
                 </div>
-                <div className="pt-4">
+
+                {/* Info */}
+                <div className="pt-3">
                   <div className="flex items-start justify-between gap-2">
-                    <h2 className="text-lg font-semibold text-foreground">{p.name}</h2>
+                    <h2 className="text-base font-semibold text-foreground leading-snug">
+                      {p.name}
+                    </h2>
                     {p.is_reserved && (
-                      <span className="rounded-full border border-border px-2 py-0.5 text-xs text-muted-foreground">
+                      <span className="shrink-0 rounded-full border border-border px-2 py-0.5 text-xs text-muted-foreground">
                         Reserved
                       </span>
                     )}
                   </div>
+
+                  {/* Serial number badge */}
+                  {(p as any).serial_number && (
+                    <span className="mt-1 inline-flex items-center gap-1 rounded bg-muted px-2 py-0.5 font-mono text-[11px] text-muted-foreground">
+                      <span className="text-[9px] uppercase tracking-wider">S/N</span>
+                      {(p as any).serial_number}
+                    </span>
+                  )}
+
                   {p.short_description && (
-                    <p className="mt-1 line-clamp-2 text-sm text-muted-foreground">
+                    <p className="mt-1 line-clamp-2 text-xs text-muted-foreground">
                       {p.short_description}
                     </p>
                   )}
-                  <p className="mt-3 text-lg font-bold text-primary">
+                  <p className="mt-2 text-base font-bold text-primary">
                     KSh {Number(p.offer_price).toLocaleString()}
                   </p>
                 </div>
