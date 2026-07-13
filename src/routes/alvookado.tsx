@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
@@ -9,6 +9,8 @@ import { supabase } from "@/integrations/supabase/client";
 import {
   adminListProducts,
   adminListReservations,
+  adminListCounterOffers,
+  updateCounterOfferStatus,
   bulkImportProducts,
   checkIsAdmin,
   createProduct,
@@ -182,6 +184,7 @@ function Dashboard() {
           <TabsList>
             <TabsTrigger value="products">Products</TabsTrigger>
             <TabsTrigger value="reservations">Reservations</TabsTrigger>
+            <TabsTrigger value="counter-offers">Counter Offers</TabsTrigger>
             <TabsTrigger value="import">Bulk import</TabsTrigger>
           </TabsList>
           <TabsContent value="products" className="mt-6">
@@ -189,6 +192,9 @@ function Dashboard() {
           </TabsContent>
           <TabsContent value="reservations" className="mt-6">
             <ReservationsTab />
+          </TabsContent>
+          <TabsContent value="counter-offers" className="mt-6">
+            <CounterOffersTab />
           </TabsContent>
           <TabsContent value="import" className="mt-6">
             <ImportTab />
@@ -234,7 +240,9 @@ function ProductsTab() {
                   <td className="p-3">{p.name}</td>
                   <td className="p-3">KSh {Number(p.offer_price).toLocaleString()}</td>
                   <td className="p-3">
-                    {p.acquisition_price != null ? `KSh ${Number(p.acquisition_price).toLocaleString()}` : "—"}
+                    {p.acquisition_price != null
+                      ? `KSh ${Number(p.acquisition_price).toLocaleString()}`
+                      : "—"}
                   </td>
                   <td className="p-3">
                     {!p.is_active ? "Inactive" : p.is_reserved ? "Reserved" : "Available"}
@@ -269,7 +277,9 @@ function ProductsTab() {
               ))}
               {(data ?? []).length === 0 && (
                 <tr>
-                  <td colSpan={5} className="p-6 text-center text-muted-foreground">No products yet.</td>
+                  <td colSpan={5} className="p-6 text-center text-muted-foreground">
+                    No products yet.
+                  </td>
                 </tr>
               )}
             </tbody>
@@ -280,6 +290,7 @@ function ProductsTab() {
   );
 }
 
+// ─── Product dialog with image upload ───────────────────────
 function ProductDialog({
   children,
   product,
@@ -298,11 +309,74 @@ function ProductDialog({
     description: product?.description ?? "",
     acquisition_price: product?.acquisition_price?.toString() ?? "",
     offer_price: product?.offer_price?.toString() ?? "",
-    image_url: product?.image_url ?? "",
     is_active: product?.is_active ?? true,
     is_reserved: product?.is_reserved ?? false,
   });
+  // image_urls managed separately so we can add/remove
+  const [imageUrls, setImageUrls] = useState<string[]>(
+    product?.image_urls?.length
+      ? product.image_urls
+      : product?.image_url
+      ? [product.image_url]
+      : [],
+  );
+  const [uploading, setUploading] = useState(false);
   const [busy, setBusy] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Reset state when dialog opens with a product
+  function handleOpenChange(v: boolean) {
+    setOpen(v);
+    if (v) {
+      setForm({
+        name: product?.name ?? "",
+        short_description: product?.short_description ?? "",
+        description: product?.description ?? "",
+        acquisition_price: product?.acquisition_price?.toString() ?? "",
+        offer_price: product?.offer_price?.toString() ?? "",
+        is_active: product?.is_active ?? true,
+        is_reserved: product?.is_reserved ?? false,
+      });
+      setImageUrls(
+        product?.image_urls?.length
+          ? product.image_urls
+          : product?.image_url
+          ? [product.image_url]
+          : [],
+      );
+    }
+  }
+
+  async function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const files = Array.from(e.target.files ?? []);
+    if (!files.length) return;
+    setUploading(true);
+    try {
+      const newUrls: string[] = [];
+      for (const file of files) {
+        const ext = file.name.split(".").pop() ?? "jpg";
+        const path = `${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
+        const { error: upErr } = await supabase.storage
+          .from("product-images")
+          .upload(path, file, { cacheControl: "3600", upsert: false });
+        if (upErr) throw upErr;
+        const { data: urlData } = supabase.storage.from("product-images").getPublicUrl(path);
+        newUrls.push(urlData.publicUrl);
+      }
+      setImageUrls((prev) => [...prev, ...newUrls]);
+      toast.success(`${newUrls.length} image${newUrls.length > 1 ? "s" : ""} uploaded`);
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Upload failed");
+    } finally {
+      setUploading(false);
+      // reset input so same file can be re-selected
+      if (fileInputRef.current) fileInputRef.current.value = "";
+    }
+  }
+
+  function removeImage(idx: number) {
+    setImageUrls((prev) => prev.filter((_, i) => i !== idx));
+  }
 
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -314,7 +388,8 @@ function ProductDialog({
         description: form.description || null,
         acquisition_price: form.acquisition_price ? Number(form.acquisition_price) : null,
         offer_price: Number(form.offer_price),
-        image_url: form.image_url || null,
+        image_url: imageUrls[0] ?? null,
+        image_urls: imageUrls,
         is_active: form.is_active,
         is_reserved: form.is_reserved,
       };
@@ -335,7 +410,7 @@ function ProductDialog({
   }
 
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
+    <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogTrigger asChild>{children}</DialogTrigger>
       <DialogContent className="max-h-[90vh] overflow-y-auto">
         <DialogHeader>
@@ -344,41 +419,120 @@ function ProductDialog({
         <form onSubmit={onSubmit} className="space-y-3">
           <div>
             <Label>Name</Label>
-            <Input required value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} />
+            <Input
+              required
+              value={form.name}
+              onChange={(e) => setForm({ ...form, name: e.target.value })}
+            />
           </div>
           <div>
             <Label>Short description</Label>
-            <Input value={form.short_description} onChange={(e) => setForm({ ...form, short_description: e.target.value })} />
+            <Input
+              value={form.short_description}
+              onChange={(e) => setForm({ ...form, short_description: e.target.value })}
+            />
           </div>
           <div>
             <Label>Description</Label>
-            <Textarea rows={4} value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} />
+            <Textarea
+              rows={4}
+              value={form.description}
+              onChange={(e) => setForm({ ...form, description: e.target.value })}
+            />
           </div>
           <div className="grid grid-cols-2 gap-3">
             <div>
               <Label>Acquisition price</Label>
-              <Input type="number" step="0.01" value={form.acquisition_price} onChange={(e) => setForm({ ...form, acquisition_price: e.target.value })} />
+              <Input
+                type="number"
+                step="0.01"
+                value={form.acquisition_price}
+                onChange={(e) => setForm({ ...form, acquisition_price: e.target.value })}
+              />
             </div>
             <div>
               <Label>Offer price *</Label>
-              <Input type="number" step="0.01" required value={form.offer_price} onChange={(e) => setForm({ ...form, offer_price: e.target.value })} />
+              <Input
+                type="number"
+                step="0.01"
+                required
+                value={form.offer_price}
+                onChange={(e) => setForm({ ...form, offer_price: e.target.value })}
+              />
             </div>
           </div>
-          <div>
-            <Label>Image URL</Label>
-            <Input type="url" value={form.image_url} onChange={(e) => setForm({ ...form, image_url: e.target.value })} placeholder="https://…" />
+
+          {/* Image upload section */}
+          <div className="space-y-2">
+            <Label>Images</Label>
+
+            {/* Existing images */}
+            {imageUrls.length > 0 && (
+              <div className="grid grid-cols-3 gap-2">
+                {imageUrls.map((url, i) => (
+                  <div key={url + i} className="relative group">
+                    <img
+                      src={url}
+                      alt={`Image ${i + 1}`}
+                      className="aspect-square w-full rounded object-cover border"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => removeImage(i)}
+                      className="absolute top-1 right-1 hidden group-hover:flex items-center justify-center w-5 h-5 rounded-full bg-destructive text-destructive-foreground text-xs font-bold"
+                    >
+                      ×
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {/* File picker */}
+            <div className="flex items-center gap-2">
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/jpeg,image/jpg,image/png,image/webp,image/gif"
+                multiple
+                onChange={handleFileChange}
+                className="hidden"
+                id="img-upload"
+              />
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                disabled={uploading}
+                onClick={() => fileInputRef.current?.click()}
+              >
+                {uploading ? "Uploading…" : "Upload images"}
+              </Button>
+              <span className="text-xs text-muted-foreground">
+                JPEG, PNG, WebP, GIF · max 5 MB each
+              </span>
+            </div>
           </div>
+
           <div className="flex gap-4 text-sm">
             <label className="inline-flex items-center gap-2">
-              <input type="checkbox" checked={form.is_active} onChange={(e) => setForm({ ...form, is_active: e.target.checked })} />
+              <input
+                type="checkbox"
+                checked={form.is_active}
+                onChange={(e) => setForm({ ...form, is_active: e.target.checked })}
+              />
               Active
             </label>
             <label className="inline-flex items-center gap-2">
-              <input type="checkbox" checked={form.is_reserved} onChange={(e) => setForm({ ...form, is_reserved: e.target.checked })} />
+              <input
+                type="checkbox"
+                checked={form.is_reserved}
+                onChange={(e) => setForm({ ...form, is_reserved: e.target.checked })}
+              />
               Reserved
             </label>
           </div>
-          <Button type="submit" disabled={busy} className="w-full">
+          <Button type="submit" disabled={busy || uploading} className="w-full">
             {busy ? "Saving…" : "Save"}
           </Button>
         </form>
@@ -387,6 +541,7 @@ function ProductDialog({
   );
 }
 
+// ─── Reservations tab ────────────────────────────────────────
 function ReservationsTab() {
   const listFn = useServerFn(adminListReservations);
   const updateFn = useServerFn(updateReservationStatus);
@@ -405,6 +560,7 @@ function ReservationsTab() {
           <tr>
             <th className="p-3 text-left">Date</th>
             <th className="p-3 text-left">Product</th>
+            <th className="p-3 text-left">Qty</th>
             <th className="p-3 text-left">Customer</th>
             <th className="p-3 text-left">Contact</th>
             <th className="p-3 text-left">Status</th>
@@ -415,6 +571,7 @@ function ReservationsTab() {
             <tr key={r.id} className="border-t align-top">
               <td className="p-3 whitespace-nowrap">{new Date(r.created_at).toLocaleString()}</td>
               <td className="p-3">{r.products?.name ?? "—"}</td>
+              <td className="p-3">{r.quantity ?? 1}</td>
               <td className="p-3">{r.customer_name}</td>
               <td className="p-3">
                 <div>{r.customer_email}</div>
@@ -433,7 +590,9 @@ function ReservationsTab() {
                     }
                   }}
                 >
-                  <SelectTrigger className="w-36"><SelectValue /></SelectTrigger>
+                  <SelectTrigger className="w-36">
+                    <SelectValue />
+                  </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="pending">Pending</SelectItem>
                     <SelectItem value="confirmed">Confirmed</SelectItem>
@@ -446,7 +605,9 @@ function ReservationsTab() {
           ))}
           {(data ?? []).length === 0 && (
             <tr>
-              <td colSpan={5} className="p-6 text-center text-muted-foreground">No reservations yet.</td>
+              <td colSpan={6} className="p-6 text-center text-muted-foreground">
+                No reservations yet.
+              </td>
             </tr>
           )}
         </tbody>
@@ -455,6 +616,89 @@ function ReservationsTab() {
   );
 }
 
+// ─── Counter offers tab ──────────────────────────────────────
+function CounterOffersTab() {
+  const listFn = useServerFn(adminListCounterOffers);
+  const updateFn = useServerFn(updateCounterOfferStatus);
+  const qc = useQueryClient();
+  const { data, isLoading } = useQuery({
+    queryKey: ["admin-counter-offers"],
+    queryFn: () => listFn(),
+  });
+
+  if (isLoading) return <div className="text-muted-foreground">Loading…</div>;
+
+  return (
+    <div className="overflow-x-auto rounded-lg border">
+      <table className="w-full text-sm">
+        <thead className="bg-muted">
+          <tr>
+            <th className="p-3 text-left">Date</th>
+            <th className="p-3 text-left">Product</th>
+            <th className="p-3 text-left">Current price</th>
+            <th className="p-3 text-left">Counter offer</th>
+            <th className="p-3 text-left">From</th>
+            <th className="p-3 text-left">Status</th>
+          </tr>
+        </thead>
+        <tbody>
+          {(data ?? []).map((co: any) => (
+            <tr key={co.id} className="border-t align-top">
+              <td className="p-3 whitespace-nowrap">{new Date(co.created_at).toLocaleString()}</td>
+              <td className="p-3">{co.products?.name ?? "—"}</td>
+              <td className="p-3">
+                {co.products?.offer_price != null
+                  ? `KSh ${Number(co.products.offer_price).toLocaleString()}`
+                  : "—"}
+              </td>
+              <td className="p-3 font-semibold text-primary">
+                KSh {Number(co.counter_price).toLocaleString()}
+              </td>
+              <td className="p-3">
+                <div>{co.customer_name}</div>
+                <div className="text-muted-foreground">{co.customer_email}</div>
+                <div className="text-muted-foreground">{co.customer_phone}</div>
+                {co.notes && <div className="mt-1 text-xs text-muted-foreground">{co.notes}</div>}
+              </td>
+              <td className="p-3">
+                <Select
+                  value={co.status}
+                  onValueChange={async (v) => {
+                    try {
+                      await updateFn({ data: { id: co.id, status: v as any } });
+                      qc.invalidateQueries({ queryKey: ["admin-counter-offers"] });
+                    } catch (e) {
+                      toast.error(e instanceof Error ? e.message : "Failed");
+                    }
+                  }}
+                >
+                  <SelectTrigger className="w-36">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="pending">Pending</SelectItem>
+                    <SelectItem value="accepted">Accepted</SelectItem>
+                    <SelectItem value="outbid">Outbid</SelectItem>
+                    <SelectItem value="withdrawn">Withdrawn</SelectItem>
+                  </SelectContent>
+                </Select>
+              </td>
+            </tr>
+          ))}
+          {(data ?? []).length === 0 && (
+            <tr>
+              <td colSpan={6} className="p-6 text-center text-muted-foreground">
+                No counter offers yet.
+              </td>
+            </tr>
+          )}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
+// ─── Bulk import tab ─────────────────────────────────────────
 function ImportTab() {
   const importFn = useServerFn(bulkImportProducts);
   const qc = useQueryClient();
@@ -544,9 +788,13 @@ function ImportTab() {
       {preview && (
         <div className="rounded-lg border">
           <div className="flex items-center justify-between border-b p-4">
-            <div className="text-sm">Ready to import <strong>{preview.length}</strong> products</div>
+            <div className="text-sm">
+              Ready to import <strong>{preview.length}</strong> products
+            </div>
             <div className="flex gap-2">
-              <Button variant="outline" onClick={() => setPreview(null)}>Cancel</Button>
+              <Button variant="outline" onClick={() => setPreview(null)}>
+                Cancel
+              </Button>
               <Button onClick={confirmImport} disabled={busy}>
                 {busy ? "Importing…" : "Confirm import"}
               </Button>
