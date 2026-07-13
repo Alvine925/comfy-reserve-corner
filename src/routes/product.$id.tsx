@@ -139,23 +139,38 @@ function ProductPage() {
             </div>
           )}
 
-          <h1 className="text-xl font-bold text-foreground sm:text-3xl">{displayName}</h1>
+          {/* Title */}
+          <h1 className="text-xl font-bold tracking-tight text-slate-900 sm:text-3xl">{displayName}</h1>
 
+          {/* Short description */}
           {product.short_description && (
-            <p className="mt-2 text-sm text-accent-foreground/80 sm:mt-3 sm:text-base">{product.short_description}</p>
+            <p className="mt-2 text-sm text-slate-500 sm:mt-3 sm:text-base">{product.short_description}</p>
           )}
-          <p className="mt-3 text-2xl font-bold text-primary sm:mt-4 sm:text-4xl">
-            KSh {Number(product.offer_price).toLocaleString()}
-          </p>
+
+          {/* Pricing block */}
+          <div className="mt-3 sm:mt-4">
+            <p className="text-2xl font-bold text-emerald-700 sm:text-4xl">
+              KSh {Number(product.offer_price).toLocaleString()}
+            </p>
+            {(product as any).acquisition_price != null && (
+              <p className="mt-1 text-xs text-slate-400 sm:text-sm">
+                Acquired at{" "}
+                <span className="font-medium text-slate-500">
+                  KSh {Number((product as any).acquisition_price).toLocaleString()}
+                </span>
+              </p>
+            )}
+          </div>
 
           {groupInfo && groupInfo.total > 1 && (
-            <p className="mt-1.5 text-xs text-muted-foreground sm:mt-2 sm:text-sm">
+            <p className="mt-1.5 text-xs text-slate-400 sm:mt-2 sm:text-sm">
               {groupInfo.available} of {groupInfo.total} unit{groupInfo.total !== 1 ? "s" : ""} available
             </p>
           )}
 
+          {/* Long description */}
           {product.description && (
-            <p className="mt-4 whitespace-pre-wrap text-xs leading-relaxed text-muted-foreground sm:mt-6 sm:text-sm">
+            <p className="mt-4 whitespace-pre-wrap text-xs leading-relaxed text-slate-500 sm:mt-6 sm:text-sm">
               {product.description}
             </p>
           )}
@@ -260,7 +275,7 @@ function SerialPickerPanel({
 
         {units.length === 1 ? (
           <div className="flex items-center justify-between rounded-lg border border-border px-4 py-3">
-            <span className="font-mono text-sm font-semibold tracking-wide text-foreground">
+            <span className="font-mono text-sm font-semibold tracking-wide text-indigo-600">
               {units[0].serial_number ?? "—"}
             </span>
             {cartUnitIds.has(units[0].id) && (

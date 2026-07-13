@@ -10,6 +10,20 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sh
 import { cn } from "@/lib/utils";
 import { LayoutGrid, Search, SlidersHorizontal, X, Check } from "lucide-react";
 
+// Distinct accent color per category (text class for label + icon)
+const CATEGORY_COLORS: Record<string, string> = {
+  chairs:            "text-amber-600",
+  office_desks:      "text-sky-600",
+  executive_desks:   "text-violet-600",
+  reception_desks:   "text-teal-600",
+  conference_tables: "text-rose-600",
+  dining_tables:     "text-orange-600",
+  sofas:             "text-indigo-600",
+  storage:           "text-stone-600",
+  beds:              "text-pink-600",
+  other:             "text-gray-500",
+};
+
 const productsQuery = queryOptions({
   queryKey: ["products", "active"],
   queryFn: () => listActiveProducts(),
@@ -100,48 +114,43 @@ function Browse() {
     return (
       <div className="min-h-screen bg-background">
         <header>
-          <div className="mx-auto max-w-6xl px-4 py-6 sm:py-10">
-            <div className="flex items-end justify-between gap-3">
-              <div>
-                <h1 className="text-2xl font-bold tracking-tight text-foreground sm:text-4xl">
-                  Furniture Collection
-                </h1>
-                <p className="mt-1.5 text-xs text-muted-foreground sm:mt-2 sm:text-sm">
-                  Browse our pieces by category and reserve the one you love.
-                </p>
-              </div>
-              {/* Filter button — all screen sizes */}
+          <div className="mx-auto max-w-6xl px-4 pt-8 pb-3 sm:pt-12 sm:pb-4">
+            <h1 className="text-2xl font-bold tracking-tight text-foreground sm:text-4xl">
+              Furniture Collection
+            </h1>
+            <p className="mt-1.5 text-xs text-muted-foreground sm:mt-2 sm:text-sm">
+              Browse our pieces by category and reserve the one you love.
+            </p>
+
+            {/* Filter bar — Browse button on mobile, pills on desktop */}
+            <div className="mt-4 flex items-center gap-2">
               <button
                 type="button"
                 onClick={() => setFilterOpen(true)}
-                className="flex shrink-0 items-center gap-1.5 rounded-full border border-border px-3 py-1.5 text-xs font-medium text-muted-foreground transition-all hover:border-foreground/40 hover:text-foreground"
+                className="flex items-center gap-1.5 rounded-full border border-border px-3 py-1.5 text-xs font-medium text-muted-foreground transition-all hover:border-foreground/40 hover:text-foreground sm:hidden"
               >
                 <SlidersHorizontal className="h-3.5 w-3.5" />
-                Browse
+                Browse categories
               </button>
+              {tiles.length > 0 && (
+                <div className="hidden sm:flex items-center gap-2 overflow-x-auto pb-1 scrollbar-none">
+                  {tiles.map((cat) => {
+                    const Icon = CATEGORY_ICON_COMPONENTS[cat.value] ?? LayoutGrid;
+                    return (
+                      <FilterPill
+                        key={cat.value}
+                        active={false}
+                        label={cat.label}
+                        icon={<Icon className="h-3.5 w-3.5" />}
+                        count={cat.count}
+                        onClick={() => selectCategory(cat.value)}
+                      />
+                    );
+                  })}
+                </div>
+              )}
             </div>
           </div>
-
-          {/* Category jump pills — desktop only */}
-          {tiles.length > 0 && (
-            <div className="mx-auto max-w-6xl px-4 pb-6 hidden sm:block">
-              <div className="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-none">
-                {tiles.map((cat) => {
-                  const Icon = CATEGORY_ICON_COMPONENTS[cat.value] ?? LayoutGrid;
-                  return (
-                    <FilterPill
-                      key={cat.value}
-                      active={false}
-                      label={cat.label}
-                      icon={<Icon className="h-3.5 w-3.5" />}
-                      count={cat.count}
-                      onClick={() => selectCategory(cat.value)}
-                    />
-                  );
-                })}
-              </div>
-            </div>
-          )}
         </header>
 
         <main className="mx-auto max-w-6xl px-4 pb-28">
@@ -178,15 +187,21 @@ function Browse() {
                     </div>
                     <div className="mt-2.5 flex items-start justify-between gap-1.5">
                       <div>
-                        <p className="flex items-center gap-1 text-xs font-semibold text-foreground sm:gap-1.5 sm:text-sm">
-                          <Icon className="h-3 w-3 shrink-0 text-muted-foreground sm:h-3.5 sm:w-3.5" strokeWidth={1.75} />
+                        <p className={cn(
+                          "flex items-center gap-1 text-xs font-semibold sm:gap-1.5 sm:text-sm",
+                          CATEGORY_COLORS[cat.value] ?? "text-foreground",
+                        )}>
+                          <Icon className="h-3 w-3 shrink-0 sm:h-3.5 sm:w-3.5" strokeWidth={1.75} />
                           {cat.label}
                         </p>
                         <p className="mt-0.5 text-[10px] text-muted-foreground sm:text-xs">
                           {cat.count} item{cat.count !== 1 ? "s" : ""}
                         </p>
                       </div>
-                      <span className="mt-0.5 text-xs text-muted-foreground transition-colors group-hover:text-foreground sm:text-sm">
+                      <span className={cn(
+                        "mt-0.5 text-xs sm:text-sm transition-colors",
+                        CATEGORY_COLORS[cat.value] ?? "text-muted-foreground",
+                      )}>
                         →
                       </span>
                     </div>
