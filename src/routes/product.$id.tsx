@@ -153,12 +153,12 @@ function ProductPage() {
               KSh {Number(product.offer_price).toLocaleString()}
             </p>
             {(product as any).acquisition_price != null && (
-              <p className="mt-1 text-xs text-slate-400 sm:text-sm">
-                Acquired at{" "}
-                <span className="font-medium text-slate-500">
+              <div className="mt-2 inline-flex items-center gap-2 rounded-md bg-slate-100 px-3 py-1.5">
+                <span className="text-[11px] font-semibold uppercase tracking-wide text-slate-400">Acq. price</span>
+                <span className="text-sm font-bold text-slate-700">
                   KSh {Number((product as any).acquisition_price).toLocaleString()}
                 </span>
-              </p>
+              </div>
             )}
           </div>
 
@@ -274,16 +274,25 @@ function SerialPickerPanel({
         </div>
 
         {units.length === 1 ? (
-          <div className="flex items-center justify-between rounded-lg border border-border px-4 py-3">
-            <span className="font-mono text-sm font-semibold tracking-wide text-indigo-600">
+          <div className="flex items-center justify-between rounded-lg border border-indigo-200 bg-indigo-50 px-4 py-3">
+            <span className="font-mono text-sm font-bold tracking-wide text-indigo-700">
               {units[0].serial_number ?? "—"}
             </span>
             {cartUnitIds.has(units[0].id) && (
-              <span className="text-xs text-muted-foreground">In cart</span>
+              <span className="text-xs font-medium text-indigo-400">In cart</span>
             )}
           </div>
         ) : (
-          <div className="relative">
+          <>
+            {/* Selected serial badge */}
+            {selectedUnit && (
+              <div className="flex items-center gap-2 rounded-md bg-indigo-50 border border-indigo-200 px-3 py-2">
+                <span className="text-[11px] font-semibold uppercase tracking-wide text-indigo-400">Selected S/N</span>
+                <span className="font-mono text-sm font-bold text-indigo-700">{selectedUnit.serial_number ?? selectedUnit.id}</span>
+                {selectedInCart && <span className="ml-auto text-xs font-medium text-indigo-400">In cart</span>}
+              </div>
+            )}
+            <div className="relative">
             <select
               id="serial-select"
               value={selectedUnitId}
