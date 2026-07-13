@@ -1,14 +1,16 @@
 import { createFileRoute, Link, notFound, useRouter } from "@tanstack/react-router";
 import { queryOptions, useSuspenseQuery, useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
-import { useState } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { toast } from "sonner";
-import { ShoppingBag, ChevronDown, CheckCircle2 } from "lucide-react";
+import { ShoppingBag, ChevronDown, CheckCircle2, Eye, Heart } from "lucide-react";
 import {
   getProduct,
   getProductGroupInfo,
   getAvailableUnitsForProduct,
   createCounterOffer,
+  incrementProductViews,
+  toggleProductLike,
 } from "@/lib/products.functions";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -104,12 +106,77 @@ export const Route = createFileRoute("/product/$id")({
 });
 
 // ─── Page ───────────────────────────────────────────────────
+const LIKED_KEY = "liked_products";
+
+function getLikedIds(): Set<string> {
+  try {
+    const raw = localStorage.getItem(LIKED_KEY);
+    return new Set(raw ? JSON.parse(raw) : []);
+  } catch {
+    return new Set();
+  }
+}
+
+function setLikedIds(ids: Set<string>) {
+  try {
+    localStorage.setItem(LIKED_KEY, JSON.stringify([...ids]));
+  } catch {}
+}
+
 function ProductPage() {
   const { id } = Route.useParams();
   const { data: product } = useSuspenseQuery(productQuery(id));
   const { data: groupInfo } = useQuery(groupQuery(id));
   const { data: availableUnits } = useQuery(availableUnitsQuery(id));
   const router = useRouter();
+
+  const incrementViews = useServerFn(incrementProductViews);
+  const doToggleLike = useServerFn(toggleProductLike);
+
+  const [isLiked, setIsLiked] = useState(false);
+  const [likesCount, setLikesCount] = useState<number | null>(null);
+  const [viewsCount, setViewsCount] = useState<number | null>(null);
+  const [likeLoading, setLikeLoading] = useState(false);
+
+  // Increment views once on mount
+  useEffect(() => {
+    incrementViews({ data: { id } })
+      .then((res) => setViewsCount(res.views))
+      .catch(() => {});
+  }, [id]);
+
+  // Sync liked state from localStorage
+  useEffect(() => {
+    setIsLiked(getLikedIds().has(id));
+    const raw = (product as any).likes;
+    if (raw != null) setLikesCount(Number(raw));
+  }, [id, product]);
+
+  const handleLike = useCallback(async () => {
+    if (likeLoading) return;
+    setLikeLoading(true);
+    const action = isLiked ? "unlike" : "like";
+    // Optimistic update
+    setIsLiked(!isLiked);
+    setLikesCount((c) => Math.max(0, (c ?? 0) + (action === "like" ? 1 : -1)));
+    const ids = getLikedIds();
+    action === "like" ? ids.add(id) : ids.delete(id);
+    setLikedIds(ids);
+    try {
+      const res = await doToggleLike({ data: { id, action } });
+      setLikesCount(res.likes);
+    } catch {
+      // revert optimistic update on error
+      setIsLiked(isLiked);
+      setLikesCount((c) => Math.max(0, (c ?? 0) + (action === "like" ? -1 : 1)));
+      const ids2 = getLikedIds();
+      action === "like" ? ids2.delete(id) : ids2.add(id);
+      setLikedIds(ids2);
+      toast.error("Couldn't save your like. Try again.");
+    } finally {
+      setLikeLoading(false);
+    }
+  }, [id, isLiked, likeLoading, doToggleLike]);
 
   if (!product) return null;
 
@@ -168,6 +235,23 @@ function ProductPage() {
                 </div>
               );
             })()}
+          </div>
+
+          {/* Views & Likes */}
+          <div className="mt-3 flex items-center gap-4">
+            <span className="flex items-center gap-1.5 text-xs text-slate-400">
+              <Eye className="h-3.5 w-3.5" />
+              {viewsCount != null ? viewsCount.toLocaleString() : (product as any).views ?? 0} view{((viewsCount ?? (product as any).views ?? 0)) !== 1 ? "s" : ""}
+            </span>
+            <button
+              type="button"
+              onClick={handleLike}
+              disabled={likeLoading}
+              className={`flex items-center gap-1.5 text-xs transition-colors ${isLiked ? "text-rose-500" : "text-slate-400 hover:text-rose-400"}`}
+            >
+              <Heart className={`h-3.5 w-3.5 transition-all ${isLiked ? "fill-rose-500 scale-110" : ""}`} />
+              {(likesCount ?? (product as any).likes ?? 0).toLocaleString()} {isLiked ? "liked" : "like"}
+            </button>
           </div>
 
           {groupInfo && groupInfo.total > 1 && (

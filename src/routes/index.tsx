@@ -8,7 +8,7 @@ import { cleanName } from "@/lib/name-utils";
 import { Input } from "@/components/ui/input";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { cn } from "@/lib/utils";
-import { LayoutGrid, Search, SlidersHorizontal, X, Check } from "lucide-react";
+import { LayoutGrid, Search, SlidersHorizontal, X, Check, Eye, Heart } from "lucide-react";
 
 // ── Chair sub-category helpers ─────────────────────────────────
 const CHAIR_SUB_CATEGORIES = [
@@ -518,6 +518,16 @@ function Browse() {
                       </div>
                     );
                   })()}
+                  <div className="mt-1 flex items-center gap-3">
+                    <span className="flex items-center gap-1 text-[10px] text-slate-400 sm:text-xs">
+                      <Eye className="h-3 w-3" />
+                      {((p as any).views ?? 0).toLocaleString()}
+                    </span>
+                    <span className="flex items-center gap-1 text-[10px] text-rose-400 sm:text-xs">
+                      <Heart className="h-3 w-3 fill-rose-400" />
+                      {((p as any).likes ?? 0).toLocaleString()}
+                    </span>
+                  </div>
                 </div>
               </Link>
             ))}

@@ -45,12 +45,40 @@ export const listActiveProducts = createServerFn({ method: "GET" }).handler(asyn
   );
   const { data, error } = await client
     .from("products")
-    .select("id,name,short_description,description,offer_price,acquisition_price,image_url,image_urls,is_reserved,serial_number,category")
+    .select("id,name,short_description,description,offer_price,acquisition_price,image_url,image_urls,is_reserved,serial_number,category,views,likes")
     .eq("is_active", true)
     .order("created_at", { ascending: false });
   if (error) throw new Error(error.message);
   return data ?? [];
 });
+
+// ─────────────────────────────────────────────
+// Public: increment product view count.
+// ─────────────────────────────────────────────
+export const incrementProductViews = createServerFn({ method: "POST" })
+  .inputValidator((d: unknown) => z.object({ id: z.string().uuid() }).parse(d))
+  .handler(async ({ data }) => {
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { data: p } = await supabaseAdmin.from("products").select("views").eq("id", data.id).single();
+    const newViews = (p?.views ?? 0) + 1;
+    await supabaseAdmin.from("products").update({ views: newViews }).eq("id", data.id);
+    return { views: newViews };
+  });
+
+// ─────────────────────────────────────────────
+// Public: toggle product like (like / unlike).
+// ─────────────────────────────────────────────
+export const toggleProductLike = createServerFn({ method: "POST" })
+  .inputValidator((d: unknown) =>
+    z.object({ id: z.string().uuid(), action: z.enum(["like", "unlike"]) }).parse(d),
+  )
+  .handler(async ({ data }) => {
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { data: p } = await supabaseAdmin.from("products").select("likes").eq("id", data.id).single();
+    const newLikes = Math.max(0, (p?.likes ?? 0) + (data.action === "like" ? 1 : -1));
+    await supabaseAdmin.from("products").update({ likes: newLikes }).eq("id", data.id);
+    return { likes: newLikes };
+  });
 
 // ─────────────────────────────────────────────
 // Public: single product.
