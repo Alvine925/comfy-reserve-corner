@@ -7,14 +7,14 @@ function ProductGallery({ images, name }: { images: string[]; name: string }) {
   const [active, setActive] = useState(0);
   if (images.length === 0) {
     return (
-      <div className="aspect-square overflow-hidden rounded-lg border bg-muted flex items-center justify-center text-muted-foreground">
+      <div className="aspect-square overflow-hidden bg-muted/30 flex items-center justify-center text-muted-foreground">
         No image
       </div>
     );
   }
   return (
     <div>
-      <div className="aspect-square overflow-hidden rounded-lg border bg-muted">
+      <div className="aspect-square overflow-hidden bg-muted/30">
         <img src={images[active]} alt={name} className="h-full w-full object-cover" />
       </div>
       {images.length > 1 && (
@@ -24,7 +24,7 @@ function ProductGallery({ images, name }: { images: string[]; name: string }) {
               key={src + i}
               type="button"
               onClick={() => setActive(i)}
-              className={`aspect-square overflow-hidden rounded border bg-muted ${i === active ? "ring-2 ring-primary" : ""}`}
+              className={`aspect-square overflow-hidden bg-muted/30 ${i === active ? "ring-2 ring-primary" : ""}`}
             >
               <img src={src} alt={`${name} ${i + 1}`} className="h-full w-full object-cover" />
             </button>
@@ -34,6 +34,7 @@ function ProductGallery({ images, name }: { images: string[]; name: string }) {
     </div>
   );
 }
+
 
 import { toast } from "sonner";
 import { getProduct, createReservation } from "@/lib/products.functions";
@@ -125,7 +126,7 @@ function ProductPage() {
   return (
     <div className="min-h-screen bg-background">
       <Toaster />
-      <header className="border-b bg-card">
+      <header>
         <div className="mx-auto max-w-5xl px-4 py-4">
           <Link to="/" className="text-sm text-muted-foreground hover:text-foreground">
             ← Back to browse
@@ -133,28 +134,31 @@ function ProductPage() {
         </div>
       </header>
 
-      <main className="mx-auto grid max-w-5xl gap-8 px-4 py-8 md:grid-cols-2">
+      <main className="mx-auto grid max-w-5xl gap-10 px-4 py-8 md:grid-cols-2">
         <ProductGallery images={((product.image_urls?.length ? product.image_urls : product.image_url ? [product.image_url] : []) as string[])} name={product.name} />
 
-
         <div>
-          <h1 className="text-3xl font-bold">{product.name}</h1>
+          <h1 className="text-3xl font-bold text-foreground">{product.name}</h1>
           {product.short_description && (
-            <p className="mt-2 text-muted-foreground">{product.short_description}</p>
+            <p className="mt-2 text-base text-accent-foreground/80">{product.short_description}</p>
           )}
-          <p className="mt-4 text-3xl font-bold">KSh {Number(product.offer_price).toLocaleString()}</p>
+          <p className="mt-4 text-4xl font-bold text-primary">
+            KSh {Number(product.offer_price).toLocaleString()}
+          </p>
           {product.description && (
-            <p className="mt-4 whitespace-pre-wrap text-sm">{product.description}</p>
+            <p className="mt-6 whitespace-pre-wrap text-sm leading-relaxed text-muted-foreground">
+              {product.description}
+            </p>
           )}
 
-          <div className="mt-8 rounded-lg border p-5">
+          <div className="mt-10">
             {product.is_reserved ? (
               <div className="text-center text-muted-foreground">
                 This item is already reserved.
               </div>
             ) : (
               <>
-                <h2 className="font-semibold">Reserve this item</h2>
+                <h2 className="text-xl font-semibold text-foreground">Reserve this item</h2>
                 <form onSubmit={onSubmit} className="mt-4 space-y-3">
                   <div>
                     <Label htmlFor="name">Full name</Label>
@@ -210,3 +214,4 @@ function ProductPage() {
     </div>
   );
 }
+
