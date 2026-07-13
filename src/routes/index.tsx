@@ -101,19 +101,31 @@ function Browse() {
       <div className="min-h-screen bg-background">
         <header>
           <div className="mx-auto max-w-6xl px-4 py-6 sm:py-10">
-            <h1 className="text-2xl font-bold tracking-tight text-foreground sm:text-4xl">
-              Furniture Collection
-            </h1>
-            <p className="mt-1.5 text-xs text-muted-foreground sm:mt-2 sm:text-sm">
-              Browse our pieces by category and reserve the one you love.
-            </p>
+            <div className="flex items-end justify-between gap-3">
+              <div>
+                <h1 className="text-2xl font-bold tracking-tight text-foreground sm:text-4xl">
+                  Furniture Collection
+                </h1>
+                <p className="mt-1.5 text-xs text-muted-foreground sm:mt-2 sm:text-sm">
+                  Browse our pieces by category and reserve the one you love.
+                </p>
+              </div>
+              {/* Filter button — all screen sizes */}
+              <button
+                type="button"
+                onClick={() => setFilterOpen(true)}
+                className="flex shrink-0 items-center gap-1.5 rounded-full border border-border px-3 py-1.5 text-xs font-medium text-muted-foreground transition-all hover:border-foreground/40 hover:text-foreground"
+              >
+                <SlidersHorizontal className="h-3.5 w-3.5" />
+                Browse
+              </button>
+            </div>
           </div>
 
-          {/* Category jump pills — desktop only (mobile uses the image grid) */}
+          {/* Category jump pills — desktop only */}
           {tiles.length > 0 && (
             <div className="mx-auto max-w-6xl px-4 pb-6 hidden sm:block">
               <div className="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-none">
-                <SlidersHorizontal className="h-4 w-4 shrink-0 text-muted-foreground" />
                 {tiles.map((cat) => {
                   const Icon = CATEGORY_ICON_COMPONENTS[cat.value] ?? LayoutGrid;
                   return (
@@ -184,6 +196,43 @@ function Browse() {
             </div>
           )}
         </main>
+
+        {/* ── Category grid filter sheet ── */}
+        <Sheet open={filterOpen} onOpenChange={setFilterOpen}>
+          <SheetContent side="bottom" className="rounded-t-2xl px-0 pb-safe max-h-[80vh] overflow-y-auto">
+            <SheetHeader className="px-5 pb-2">
+              <div className="flex items-center justify-between">
+                <SheetTitle className="text-base font-semibold">Browse by category</SheetTitle>
+                <button
+                  type="button"
+                  onClick={() => setFilterOpen(false)}
+                  className="rounded-full p-1.5 text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
+                >
+                  <X className="h-4 w-4" />
+                </button>
+              </div>
+            </SheetHeader>
+            <div className="px-5 pt-4 pb-8 space-y-2">
+              {tiles.map((cat) => {
+                const Icon = CATEGORY_ICON_COMPONENTS[cat.value] ?? LayoutGrid;
+                return (
+                  <button
+                    key={cat.value}
+                    type="button"
+                    onClick={() => { selectCategory(cat.value); setFilterOpen(false); }}
+                    className="flex w-full items-center justify-between rounded-xl bg-muted/40 px-4 py-3 text-sm font-medium text-foreground transition-all hover:bg-muted/70"
+                  >
+                    <span className="flex items-center gap-2.5">
+                      <Icon className="h-4 w-4 text-muted-foreground" strokeWidth={1.75} />
+                      {cat.label}
+                    </span>
+                    <span className="text-xs text-muted-foreground tabular-nums">{cat.count}</span>
+                  </button>
+                );
+              })}
+            </div>
+          </SheetContent>
+        </Sheet>
       </div>
     );
   }
