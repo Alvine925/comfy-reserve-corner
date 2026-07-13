@@ -116,7 +116,7 @@ function ProductPage() {
           {product.short_description && (
             <p className="mt-2 text-muted-foreground">{product.short_description}</p>
           )}
-          <p className="mt-4 text-3xl font-bold">${Number(product.offer_price).toFixed(2)}</p>
+          <p className="mt-4 text-3xl font-bold">KSh {Number(product.offer_price).toLocaleString()}</p>
           {product.description && (
             <p className="mt-4 whitespace-pre-wrap text-sm">{product.description}</p>
           )}

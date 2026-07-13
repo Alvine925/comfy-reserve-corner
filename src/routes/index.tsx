@@ -84,7 +84,7 @@ function Browse() {
                       {p.short_description}
                     </p>
                   )}
-                  <p className="mt-3 text-lg font-bold">${Number(p.offer_price).toFixed(2)}</p>
+                  <p className="mt-3 text-lg font-bold">KSh {Number(p.offer_price).toLocaleString()}</p>
                 </div>
               </Link>
             ))}

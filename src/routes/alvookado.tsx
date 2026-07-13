@@ -232,7 +232,7 @@ function ProductsTab() {
               {(data ?? []).map((p: ProductRow) => (
                 <tr key={p.id} className="border-t">
                   <td className="p-3">{p.name}</td>
-                  <td className="p-3">${Number(p.offer_price).toFixed(2)}</td>
+                  <td className="p-3">KSh {Number(p.offer_price).toLocaleString()}</td>
                   <td className="p-3">
                     {p.acquisition_price != null ? `KSh ${Number(p.acquisition_price).toLocaleString()}` : "—"}
                   </td>
@@ -565,7 +565,7 @@ function ImportTab() {
                 {preview.slice(0, 50).map((r, i) => (
                   <tr key={i} className="border-t">
                     <td className="p-2">{r.name}</td>
-                    <td className="p-2">${Number(r.offer_price).toFixed(2)}</td>
+                    <td className="p-2">KSh {Number(r.offer_price).toLocaleString()}</td>
                     <td className="p-2 truncate max-w-xs">{r.image_url || "—"}</td>
                   </tr>
                 ))}
