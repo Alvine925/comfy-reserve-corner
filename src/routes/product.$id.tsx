@@ -7,14 +7,14 @@ function ProductGallery({ images, name }: { images: string[]; name: string }) {
   const [active, setActive] = useState(0);
   if (images.length === 0) {
     return (
-      <div className="aspect-square overflow-hidden rounded-lg border bg-muted flex items-center justify-center text-muted-foreground">
+      <div className="aspect-square overflow-hidden bg-muted/30 flex items-center justify-center text-muted-foreground">
         No image
       </div>
     );
   }
   return (
     <div>
-      <div className="aspect-square overflow-hidden rounded-lg border bg-muted">
+      <div className="aspect-square overflow-hidden bg-muted/30">
         <img src={images[active]} alt={name} className="h-full w-full object-cover" />
       </div>
       {images.length > 1 && (
@@ -24,7 +24,7 @@ function ProductGallery({ images, name }: { images: string[]; name: string }) {
               key={src + i}
               type="button"
               onClick={() => setActive(i)}
-              className={`aspect-square overflow-hidden rounded border bg-muted ${i === active ? "ring-2 ring-primary" : ""}`}
+              className={`aspect-square overflow-hidden bg-muted/30 ${i === active ? "ring-2 ring-primary" : ""}`}
             >
               <img src={src} alt={`${name} ${i + 1}`} className="h-full w-full object-cover" />
             </button>
@@ -34,6 +34,7 @@ function ProductGallery({ images, name }: { images: string[]; name: string }) {
     </div>
   );
 }
+
 
 import { toast } from "sonner";
 import { getProduct, createReservation } from "@/lib/products.functions";
