@@ -10,6 +10,22 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sh
 import { cn } from "@/lib/utils";
 import { LayoutGrid, Search, SlidersHorizontal, X, Check } from "lucide-react";
 
+// ── Chair sub-category helpers ─────────────────────────────────
+const CHAIR_SUB_CATEGORIES = [
+  { value: "mb",  label: "Office Chair MB (Medium Back)" },
+  { value: "vis", label: "Office Chair VIS (Visitor)" },
+  { value: "other", label: "Other Chairs" },
+] as const;
+
+type ChairSubCategoryValue = (typeof CHAIR_SUB_CATEGORIES)[number]["value"];
+
+function getChairSubCategory(name: string): ChairSubCategoryValue {
+  const u = name.toUpperCase();
+  if (u.includes(" MB ") || u.includes(" MB(") || u.includes("(MB)")) return "mb";
+  if (u.includes(" VIS ") || u.includes(" VIS(") || u.includes("(VIS)") || u.includes("VIS ")) return "vis";
+  return "other";
+}
+
 // Distinct accent color per category (text class for label + icon)
 const CATEGORY_COLORS: Record<string, string> = {
   chairs:            "text-amber-600",
@@ -58,6 +74,7 @@ type AvailabilityFilter = "all" | "available" | "reserved";
 function Browse() {
   const { data: products } = useSuspenseQuery(productsQuery);
   const [activeCategory, setActiveCategory] = useState<string | null>(null);
+  const [chairSubCategory, setChairSubCategory] = useState<ChairSubCategoryValue | null>(null);
   const [availability, setAvailability] = useState<AvailabilityFilter>("all");
   const [query, setQuery] = useState("");
   const [filterOpen, setFilterOpen] = useState(false);
@@ -70,11 +87,22 @@ function Browse() {
     }).filter((c) => c.count > 0);
   }, [products]);
 
+  // Chair sub-category tiles (only used when activeCategory === "chairs")
+  const chairSubTiles = useMemo(() => {
+    const chairProducts = products.filter((p) => (p as any).category === "chairs");
+    return CHAIR_SUB_CATEGORIES.map((sub) => {
+      const items = chairProducts.filter((p) => getChairSubCategory(p.name) === sub.value);
+      const image = items.find((p) => p.image_url)?.image_url ?? null;
+      return { ...sub, count: items.length, image };
+    }).filter((s) => s.count > 0);
+  }, [products]);
+
   const filteredProducts = useMemo(() => {
     if (!activeCategory) return [];
     const q = query.trim().toLowerCase();
     return products.filter((p) => {
       if ((p as any).category !== activeCategory) return false;
+      if (activeCategory === "chairs" && chairSubCategory && getChairSubCategory(p.name) !== chairSubCategory) return false;
       if (availability === "available" && p.is_reserved) return false;
       if (availability === "reserved" && !p.is_reserved) return false;
       if (!q) return true;
@@ -83,28 +111,33 @@ function Browse() {
         (p.short_description ?? "").toLowerCase().includes(q)
       );
     });
-  }, [products, activeCategory, query, availability]);
+  }, [products, activeCategory, chairSubCategory, query, availability]);
 
   const activeTile = tiles.find((t) => t.value === activeCategory);
+  const activeChairSubTile = chairSubTiles.find((s) => s.value === chairSubCategory);
 
   function selectCategory(value: string) {
     setActiveCategory(value);
+    setChairSubCategory(null);
     setQuery("");
     setAvailability("all");
   }
 
   function clearCategory() {
     setActiveCategory(null);
+    setChairSubCategory(null);
     setQuery("");
     setAvailability("all");
   }
 
-  const availableCount = products.filter(
-    (p) => (p as any).category === activeCategory && !p.is_reserved,
-  ).length;
-  const reservedCount = products.filter(
-    (p) => (p as any).category === activeCategory && p.is_reserved,
-  ).length;
+  function clearChairSubCategory() {
+    setChairSubCategory(null);
+    setQuery("");
+    setAvailability("all");
+  }
+
+  const availableCount = filteredProducts.filter((p) => !p.is_reserved).length;
+  const reservedCount = filteredProducts.filter((p) => p.is_reserved).length;
 
   // Count active non-default filters (for the badge on the mobile filter button)
   const activeFilterCount = (availability !== "all" ? 1 : 0);
@@ -255,24 +288,101 @@ function Browse() {
   // ── Product list within a category ────────────────────────────
   const CatIcon = CATEGORY_ICON_COMPONENTS[activeCategory] ?? LayoutGrid;
 
+  // ── Chair sub-category tile view ──────────────────────────────
+  if (activeCategory === "chairs" && !chairSubCategory) {
+    return (
+      <div className="min-h-screen bg-background">
+        <header>
+          <div className="mx-auto max-w-6xl px-4 pt-6 pb-4 sm:pt-8 sm:pb-6">
+            <button
+              type="button"
+              onClick={clearCategory}
+              className="mb-4 flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground transition-colors sm:mb-5"
+            >
+              ← All categories
+            </button>
+            <div className="flex items-center gap-2 min-w-0">
+              <CatIcon className="h-4 w-4 shrink-0 text-muted-foreground sm:h-5 sm:w-5" strokeWidth={1.75} />
+              <h1 className="truncate text-xl font-bold tracking-tight text-foreground sm:text-2xl">
+                Chairs
+              </h1>
+            </div>
+            <p className="mt-1 text-xs text-muted-foreground sm:text-sm">Select a chair type to browse.</p>
+          </div>
+        </header>
+        <main className="mx-auto max-w-6xl px-4 pb-28">
+          <div className="grid grid-cols-2 gap-x-3 gap-y-7 sm:grid-cols-3 sm:gap-x-6 sm:gap-y-10">
+            {chairSubTiles.map((sub) => (
+              <button
+                key={sub.value}
+                type="button"
+                onClick={() => setChairSubCategory(sub.value)}
+                className="group text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 rounded-sm"
+              >
+                <div className="aspect-[4/3] w-full overflow-hidden rounded-xl bg-muted/30">
+                  {sub.image ? (
+                    <img
+                      src={sub.image}
+                      alt={sub.label}
+                      className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
+                    />
+                  ) : (
+                    <div className="flex h-full w-full items-center justify-center bg-muted/20 transition-colors group-hover:bg-muted/40">
+                      <CatIcon className="h-12 w-12 text-foreground/30 transition-all duration-300 group-hover:scale-110 group-hover:text-foreground/50" strokeWidth={1.25} />
+                    </div>
+                  )}
+                </div>
+                <div className="mt-2.5 flex items-start justify-between gap-1.5">
+                  <div>
+                    <p className="flex items-center gap-1 text-xs font-semibold text-amber-600 sm:gap-1.5 sm:text-sm">
+                      <CatIcon className="h-3 w-3 shrink-0 sm:h-3.5 sm:w-3.5" strokeWidth={1.75} />
+                      {sub.label}
+                    </p>
+                    <p className="mt-0.5 text-[10px] text-muted-foreground sm:text-xs">
+                      {sub.count} item{sub.count !== 1 ? "s" : ""}
+                    </p>
+                  </div>
+                  <span className="mt-0.5 text-xs text-amber-600 transition-colors sm:text-sm">→</span>
+                </div>
+              </button>
+            ))}
+          </div>
+        </main>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-background">
       <header>
         <div className="mx-auto max-w-6xl px-4 pt-6 pb-4 sm:pt-8 sm:pb-6">
-          <button
-            type="button"
-            onClick={clearCategory}
-            className="mb-4 flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground transition-colors sm:mb-5"
-          >
-            ← All categories
-          </button>
+          {/* Breadcrumb — back to sub-categories if inside chairs, else back to all */}
+          {activeCategory === "chairs" && chairSubCategory ? (
+            <div className="mb-4 flex items-center gap-2 text-sm text-muted-foreground sm:mb-5">
+              <button type="button" onClick={clearCategory} className="hover:text-foreground transition-colors">
+                All categories
+              </button>
+              <span>/</span>
+              <button type="button" onClick={clearChairSubCategory} className="hover:text-foreground transition-colors">
+                Chairs
+              </button>
+            </div>
+          ) : (
+            <button
+              type="button"
+              onClick={clearCategory}
+              className="mb-4 flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground transition-colors sm:mb-5"
+            >
+              ← All categories
+            </button>
+          )}
 
           {/* Title row */}
           <div className="flex items-center justify-between gap-3">
             <div className="flex items-center gap-2 min-w-0">
               <CatIcon className="h-4 w-4 shrink-0 text-muted-foreground sm:h-5 sm:w-5" strokeWidth={1.75} />
               <h1 className="truncate text-xl font-bold tracking-tight text-foreground sm:text-2xl">
-                {activeTile?.label ?? categoryLabel(activeCategory)}
+                {activeChairSubTile?.label ?? activeTile?.label ?? categoryLabel(activeCategory)}
               </h1>
               <span className="shrink-0 text-sm text-muted-foreground">
                 · {filteredProducts.length}
