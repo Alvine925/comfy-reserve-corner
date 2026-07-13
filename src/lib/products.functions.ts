@@ -3,6 +3,37 @@ import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 
 // ─────────────────────────────────────────────
+// Serial number helpers
+// ─────────────────────────────────────────────
+function serialPrefix(name: string): string {
+  // Take first 6 alphanumeric chars of the name, uppercase
+  const clean = name.replace(/[^a-zA-Z0-9]/g, "").slice(0, 6).toUpperCase();
+  return clean || "PROD";
+}
+
+async function nextSerialStart(
+  supabase: any,
+  prefix: string,
+): Promise<number> {
+  const { data } = await supabase
+    .from("products")
+    .select("serial_number")
+    .ilike("serial_number", `${prefix}-%`);
+  let max = 0;
+  for (const p of data ?? []) {
+    if (!p.serial_number) continue;
+    const parts = p.serial_number.split("-");
+    const n = parseInt(parts[parts.length - 1], 10);
+    if (!isNaN(n) && n > max) max = n;
+  }
+  return max + 1;
+}
+
+function padSerial(prefix: string, n: number) {
+  return `${prefix}-${String(n).padStart(3, "0")}`;
+}
+
+// ─────────────────────────────────────────────
 // Public: list active products for browse page.
 // ─────────────────────────────────────────────
 export const listActiveProducts = createServerFn({ method: "GET" }).handler(async () => {
@@ -35,7 +66,7 @@ export const getProduct = createServerFn({ method: "GET" })
     );
     const { data: row, error } = await client
       .from("products")
-      .select("id,name,short_description,description,offer_price,image_url,image_urls,is_reserved,is_active")
+      .select("*")
       .eq("id", data.id)
       .eq("is_active", true)
       .maybeSingle();
@@ -44,7 +75,7 @@ export const getProduct = createServerFn({ method: "GET" })
   });
 
 // ─────────────────────────────────────────────
-// Public: get available / total units for a product group (same name).
+// Public: available / total units for a product name group.
 // ─────────────────────────────────────────────
 export const getProductGroupInfo = createServerFn({ method: "GET" })
   .inputValidator((d: unknown) => z.object({ id: z.string().uuid() }).parse(d))
@@ -55,8 +86,6 @@ export const getProductGroupInfo = createServerFn({ method: "GET" })
       process.env.SUPABASE_PUBLISHABLE_KEY!,
       { auth: { storage: undefined, persistSession: false, autoRefreshToken: false } },
     );
-
-    // First: get this product's name
     const { data: product, error: pErr } = await client
       .from("products")
       .select("name")
@@ -65,7 +94,6 @@ export const getProductGroupInfo = createServerFn({ method: "GET" })
     if (pErr) throw new Error(pErr.message);
     if (!product) return { available: 0, total: 0, name: "" };
 
-    // Count all active units with the same name
     const { data: units, error: uErr } = await client
       .from("products")
       .select("id,is_reserved")
@@ -116,7 +144,10 @@ export const adminListProducts = createServerFn({ method: "GET" })
     return data ?? [];
   });
 
-const productSchema = z.object({
+// ─────────────────────────────────────────────
+// Schemas
+// ─────────────────────────────────────────────
+const productBaseSchema = z.object({
   name: z.string().min(1).max(200),
   short_description: z.string().max(300).nullable().optional(),
   description: z.string().max(5000).nullable().optional(),
@@ -128,18 +159,45 @@ const productSchema = z.object({
   is_reserved: z.boolean().optional(),
 });
 
+// Create extends base with a quantity field (not stored; drives batch creation)
+const createProductSchema = productBaseSchema.extend({
+  quantity: z.number().int().min(1).max(500).default(1),
+});
+
+// Update and bulk import use the base schema
+const productSchema = productBaseSchema;
+
+// ─────────────────────────────────────────────
+// Admin: create product(s).
+// quantity > 1 generates N copies each with a unique serial number.
+// ─────────────────────────────────────────────
 export const createProduct = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((d: unknown) => productSchema.parse(d))
+  .inputValidator((d: unknown) => createProductSchema.parse(d))
   .handler(async ({ data, context }) => {
     await assertAdmin(context);
-    const { data: row, error } = await context.supabase
+
+    const { quantity, ...fields } = data;
+    const prefix = serialPrefix(fields.name);
+    const start = await nextSerialStart(context.supabase, prefix);
+
+    const rows = Array.from({ length: quantity }, (_, i) => ({
+      ...fields,
+      serial_number: padSerial(prefix, start + i),
+    }));
+
+    const { data: inserted, error } = await context.supabase
       .from("products")
-      .insert(data)
-      .select()
-      .single();
+      .insert(rows)
+      .select("id,serial_number");
     if (error) throw new Error(error.message);
-    return row;
+
+    const serials = (inserted ?? []).map((r: any) => r.serial_number as string);
+    return {
+      count: serials.length,
+      firstSerial: serials[0] ?? null,
+      lastSerial: serials[serials.length - 1] ?? null,
+    };
   });
 
 export const updateProduct = createServerFn({ method: "POST" })
@@ -169,7 +227,35 @@ export const deleteProduct = createServerFn({ method: "POST" })
     return { ok: true };
   });
 
-// Bulk import: array of product rows.
+// ─────────────────────────────────────────────
+// Admin: sync image_urls across all products with the same name.
+// ─────────────────────────────────────────────
+export const syncGroupImages = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d: unknown) => z.object({ product_id: z.string().uuid() }).parse(d))
+  .handler(async ({ data, context }) => {
+    await assertAdmin(context);
+    const { data: product, error: pErr } = await context.supabase
+      .from("products")
+      .select("name,image_url,image_urls")
+      .eq("id", data.product_id)
+      .maybeSingle();
+    if (pErr) throw new Error(pErr.message);
+    if (!product) throw new Error("Product not found");
+
+    const { data: updated, error: uErr } = await context.supabase
+      .from("products")
+      .update({ image_urls: product.image_urls, image_url: product.image_url })
+      .eq("name", product.name)
+      .neq("id", data.product_id)
+      .select("id");
+    if (uErr) throw new Error(uErr.message);
+    return { synced: updated?.length ?? 0, name: product.name };
+  });
+
+// ─────────────────────────────────────────────
+// Admin: bulk import
+// ─────────────────────────────────────────────
 export const bulkImportProducts = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((d: unknown) =>
@@ -177,9 +263,23 @@ export const bulkImportProducts = createServerFn({ method: "POST" })
   )
   .handler(async ({ data, context }) => {
     await assertAdmin(context);
+    // Assign serial numbers to imported rows
+    const prefixMap: Record<string, number> = {};
+    const rowsWithSerials = await Promise.all(
+      data.rows.map(async (row) => {
+        const prefix = serialPrefix(row.name);
+        if (prefixMap[prefix] === undefined) {
+          prefixMap[prefix] = await nextSerialStart(context.supabase, prefix);
+        }
+        const serial = padSerial(prefix, prefixMap[prefix]!);
+        prefixMap[prefix]!++;
+        return { ...row, serial_number: serial };
+      }),
+    );
+
     const { data: rows, error } = await context.supabase
       .from("products")
-      .insert(data.rows)
+      .insert(rowsWithSerials)
       .select("id");
     if (error) throw new Error(error.message);
     return { inserted: rows?.length ?? 0 };
@@ -208,7 +308,6 @@ export const createReservation = createServerFn({ method: "POST" })
 
     const qty = data.quantity ?? 1;
 
-    // Fetch the requested product & check it exists
     const { data: product, error: pErr } = await supabaseAdmin
       .from("products")
       .select("id,name,offer_price,is_reserved,is_active")
@@ -217,10 +316,10 @@ export const createReservation = createServerFn({ method: "POST" })
     if (pErr) throw new Error(pErr.message);
     if (!product || !product.is_active) throw new Error("Product not available");
 
-    // Find N available units with same name (including the requested one)
+    // Find N available units with same name
     const { data: availableUnits, error: auErr } = await supabaseAdmin
       .from("products")
-      .select("id")
+      .select("id,serial_number:serial_number")
       .eq("name", product.name)
       .eq("is_active", true)
       .eq("is_reserved", false)
@@ -232,9 +331,11 @@ export const createReservation = createServerFn({ method: "POST" })
       );
     }
 
-    const unitIds = availableUnits.map((u) => u.id);
+    const unitIds = availableUnits.map((u: any) => u.id as string);
+    const serialNumbers = availableUnits
+      .map((u: any) => (u.serial_number ?? null) as string | null)
+      .filter(Boolean) as string[];
 
-    // Insert one reservation (linked to first available unit, preferring the requested product)
     const reservationProductId = unitIds.includes(data.product_id) ? data.product_id : unitIds[0];
 
     const { data: reservation, error: rErr } = await supabaseAdmin
@@ -252,10 +353,8 @@ export const createReservation = createServerFn({ method: "POST" })
       .single();
     if (rErr) throw new Error(rErr.message);
 
-    // Mark all N units as reserved
     await supabaseAdmin.from("products").update({ is_reserved: true }).in("id", unitIds);
 
-    // Send confirmation email to customer
     await sendBrevoEmail({
       to: { email: data.customer_email, name: data.customer_name },
       subject: `Reservation confirmed: ${product.name}${qty > 1 ? ` × ${qty}` : ""}`,
@@ -264,10 +363,10 @@ export const createReservation = createServerFn({ method: "POST" })
         productName: product.name,
         offerPrice: Number(product.offer_price),
         quantity: qty,
+        serialNumbers,
       }),
     });
 
-    // Notify admin
     const adminEmail = process.env.ADMIN_NOTIFY_EMAIL;
     if (adminEmail) {
       await sendBrevoEmail({
@@ -280,16 +379,16 @@ export const createReservation = createServerFn({ method: "POST" })
           customerPhone: data.customer_phone,
           notes: data.notes,
           quantity: qty,
+          serialNumbers,
         }),
       });
     }
 
-    return { ok: true, id: reservation.id };
+    return { ok: true, id: reservation.id, serialNumbers };
   });
 
 // ─────────────────────────────────────────────
-// Public: submit a counter offer on a reserved product.
-// Emails the original reserver to inform them they've been outbid.
+// Public: counter offer on a reserved product.
 // ─────────────────────────────────────────────
 const counterOfferSchema = z.object({
   product_id: z.string().uuid(),
@@ -306,7 +405,6 @@ export const createCounterOffer = createServerFn({ method: "POST" })
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const { sendBrevoEmail, outbidNotificationHtml } = await import("./email.server");
 
-    // Get product
     const { data: product, error: pErr } = await supabaseAdmin
       .from("products")
       .select("id,name,offer_price,is_reserved,is_active")
@@ -322,7 +420,6 @@ export const createCounterOffer = createServerFn({ method: "POST" })
       );
     }
 
-    // Insert counter offer
     const { data: co, error: coErr } = await supabaseAdmin
       .from("counter_offers")
       .insert({
@@ -338,7 +435,6 @@ export const createCounterOffer = createServerFn({ method: "POST" })
       .single();
     if (coErr) throw new Error(coErr.message);
 
-    // Find original reserver to notify them
     const { data: reservation } = await supabaseAdmin
       .from("reservations")
       .select("customer_name,customer_email")
@@ -355,21 +451,21 @@ export const createCounterOffer = createServerFn({ method: "POST" })
         htmlContent: outbidNotificationHtml({
           reserverName: reservation.customer_name,
           productName: product.name,
+          serialNumber: product.serial_number ?? undefined,
           originalPrice: Number(product.offer_price),
           counterPrice: data.counter_price,
         }),
       });
     }
 
-    // Notify admin
     const adminEmail = process.env.ADMIN_NOTIFY_EMAIL;
     if (adminEmail) {
       await sendBrevoEmail({
         to: { email: adminEmail },
-        subject: `Counter offer on: ${product.name}`,
+        subject: `Counter offer on: ${product.name}${product.serial_number ? ` (${product.serial_number})` : ""}`,
         htmlContent: `
           <p><strong>Counter offer received</strong></p>
-          <p>Product: ${product.name}</p>
+          <p>Product: ${product.name}${product.serial_number ? ` — Serial: <code>${product.serial_number}</code>` : ""}</p>
           <p>Counter price: KSh ${data.counter_price.toLocaleString()}</p>
           <p>From: ${data.customer_name} — ${data.customer_email} — ${data.customer_phone}</p>
           ${data.notes ? `<p>Notes: ${data.notes}</p>` : ""}

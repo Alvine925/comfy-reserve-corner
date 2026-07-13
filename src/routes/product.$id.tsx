@@ -67,7 +67,6 @@ export const Route = createFileRoute("/product/$id")({
   loader: async ({ context, params }) => {
     const data = await context.queryClient.ensureQueryData(productQuery(params.id));
     if (!data) throw notFound();
-    // prefetch group info (non-blocking)
     context.queryClient.prefetchQuery(groupQuery(params.id));
     return data;
   },
@@ -75,18 +74,10 @@ export const Route = createFileRoute("/product/$id")({
     meta: loaderData
       ? [
           { title: `${loaderData.name} — Reserve now` },
-          {
-            name: "description",
-            content: loaderData.short_description || `Reserve ${loaderData.name} online.`,
-          },
+          { name: "description", content: loaderData.short_description || `Reserve ${loaderData.name} online.` },
           { property: "og:title", content: loaderData.name },
-          {
-            property: "og:description",
-            content: loaderData.short_description || `Reserve ${loaderData.name} online.`,
-          },
-          ...(loaderData.image_url
-            ? [{ property: "og:image", content: loaderData.image_url }]
-            : []),
+          { property: "og:description", content: loaderData.short_description || `Reserve ${loaderData.name} online.` },
+          ...(loaderData.image_url ? [{ property: "og:image", content: loaderData.image_url }] : []),
         ]
       : [{ title: "Product" }],
   }),
@@ -97,9 +88,7 @@ export const Route = createFileRoute("/product/$id")({
   notFoundComponent: () => (
     <div className="p-8 text-center">
       <p>Product not found.</p>
-      <Link to="/" className="text-primary underline">
-        Back to browse
-      </Link>
+      <Link to="/" className="text-primary underline">Back to browse</Link>
     </div>
   ),
 });
@@ -132,7 +121,6 @@ function ProductPage() {
         <ProductGallery images={images} name={product.name} />
 
         <div>
-          {/* Reserved banner */}
           {product.is_reserved && (
             <div className="mb-4 rounded-lg bg-amber-50 border border-amber-200 px-4 py-3 text-sm text-amber-800 font-medium">
               🔒 This item is currently reserved
@@ -140,14 +128,23 @@ function ProductPage() {
           )}
 
           <h1 className="text-3xl font-bold text-foreground">{product.name}</h1>
+
+          {/* Serial number badge */}
+          {product.serial_number && (
+            <div className="mt-2 inline-flex items-center gap-1.5 rounded bg-muted px-2.5 py-1 text-xs font-mono text-muted-foreground">
+              <span className="text-[10px] font-sans uppercase tracking-wider text-muted-foreground/70">Serial</span>
+              {product.serial_number}
+            </div>
+          )}
+
           {product.short_description && (
-            <p className="mt-2 text-base text-accent-foreground/80">{product.short_description}</p>
+            <p className="mt-3 text-base text-accent-foreground/80">{product.short_description}</p>
           )}
           <p className="mt-4 text-4xl font-bold text-primary">
             KSh {Number(product.offer_price).toLocaleString()}
           </p>
 
-          {/* Unit availability badge */}
+          {/* Unit availability */}
           {groupInfo && groupInfo.total > 1 && (
             <p className="mt-2 text-sm text-muted-foreground">
               {groupInfo.available} of {groupInfo.total} unit{groupInfo.total !== 1 ? "s" : ""} available
@@ -162,17 +159,12 @@ function ProductPage() {
 
           <div className="mt-10">
             {product.is_reserved ? (
-              <CounterOfferForm
-                product={product}
-                onSuccess={() => router.invalidate()}
-              />
+              <CounterOfferForm product={product} onSuccess={() => router.invalidate()} />
             ) : (
               <ReservationForm
                 product={product}
                 groupInfo={groupInfo}
-                onSuccess={() => {
-                  router.invalidate();
-                }}
+                onSuccess={() => router.invalidate()}
               />
             )}
           </div>
@@ -188,7 +180,7 @@ function ReservationForm({
   groupInfo,
   onSuccess,
 }: {
-  product: { id: string; name: string; offer_price: number };
+  product: { id: string; name: string; offer_price: number; serial_number?: string | null };
   groupInfo?: { available: number; total: number } | null;
   onSuccess: () => void;
 }) {
@@ -196,6 +188,7 @@ function ReservationForm({
   const [form, setForm] = useState({ name: "", email: "", phone: "", notes: "" });
   const [qty, setQty] = useState(1);
   const [submitting, setSubmitting] = useState(false);
+  const [confirmedSerials, setConfirmedSerials] = useState<string[]>([]);
 
   const maxQty = groupInfo?.available ?? 1;
   const showQtyPicker = maxQty > 1;
@@ -204,7 +197,7 @@ function ReservationForm({
     e.preventDefault();
     setSubmitting(true);
     try {
-      await reserve({
+      const result = await reserve({
         data: {
           product_id: product.id,
           customer_name: form.name,
@@ -214,10 +207,9 @@ function ReservationForm({
           quantity: qty,
         },
       });
+      setConfirmedSerials((result as any).serialNumbers ?? []);
       toast.success(
-        qty > 1
-          ? `${qty} units reserved! Check your email.`
-          : "Reservation confirmed! Check your email.",
+        qty > 1 ? `${qty} units reserved! Check your email.` : "Reservation confirmed! Check your email.",
       );
       setForm({ name: "", email: "", phone: "", notes: "" });
       setQty(1);
@@ -227,6 +219,20 @@ function ReservationForm({
     } finally {
       setSubmitting(false);
     }
+  }
+
+  if (confirmedSerials.length > 0) {
+    return (
+      <div className="rounded-lg border border-green-200 bg-green-50 p-6 space-y-2">
+        <p className="font-semibold text-green-800">Reservation confirmed ✓</p>
+        <p className="text-sm text-green-700">A confirmation has been sent to your email.</p>
+        <div className="mt-2 rounded bg-white border px-3 py-2">
+          <p className="text-xs text-muted-foreground mb-1">Your unit serial number{confirmedSerials.length > 1 ? "s" : ""}:</p>
+          <p className="font-mono text-sm font-semibold tracking-wide">{confirmedSerials.join(", ")}</p>
+          <p className="text-xs text-muted-foreground mt-1">Keep this — you can use it to track or counter any future offers on your unit.</p>
+        </div>
+      </div>
+    );
   }
 
   return (
@@ -248,45 +254,19 @@ function ReservationForm({
         )}
         <div>
           <Label htmlFor="name">Full name</Label>
-          <Input
-            id="name"
-            required
-            value={form.name}
-            onChange={(e) => setForm({ ...form, name: e.target.value })}
-            maxLength={120}
-          />
+          <Input id="name" required value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} maxLength={120} />
         </div>
         <div>
           <Label htmlFor="email">Email</Label>
-          <Input
-            id="email"
-            type="email"
-            required
-            value={form.email}
-            onChange={(e) => setForm({ ...form, email: e.target.value })}
-            maxLength={255}
-          />
+          <Input id="email" type="email" required value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} maxLength={255} />
         </div>
         <div>
           <Label htmlFor="phone">Phone</Label>
-          <Input
-            id="phone"
-            type="tel"
-            required
-            value={form.phone}
-            onChange={(e) => setForm({ ...form, phone: e.target.value })}
-            maxLength={40}
-          />
+          <Input id="phone" type="tel" required value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} maxLength={40} />
         </div>
         <div>
           <Label htmlFor="notes">Notes (optional)</Label>
-          <Textarea
-            id="notes"
-            value={form.notes}
-            onChange={(e) => setForm({ ...form, notes: e.target.value })}
-            maxLength={1000}
-            rows={3}
-          />
+          <Textarea id="notes" value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} maxLength={1000} rows={3} />
         </div>
         <Button type="submit" disabled={submitting} className="w-full">
           {submitting
@@ -305,17 +285,11 @@ function CounterOfferForm({
   product,
   onSuccess,
 }: {
-  product: { id: string; name: string; offer_price: number };
+  product: { id: string; name: string; offer_price: number; serial_number?: string | null };
   onSuccess: () => void;
 }) {
   const submitOffer = useServerFn(createCounterOffer);
-  const [form, setForm] = useState({
-    name: "",
-    email: "",
-    phone: "",
-    counter_price: "",
-    notes: "",
-  });
+  const [form, setForm] = useState({ name: "", email: "", phone: "", counter_price: "", notes: "" });
   const [submitting, setSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
 
@@ -355,7 +329,7 @@ function CounterOfferForm({
       <div className="rounded-lg border border-green-200 bg-green-50 p-6 text-center">
         <p className="font-semibold text-green-800">Counter offer submitted!</p>
         <p className="mt-1 text-sm text-green-700">
-          The current reserver has been notified. We'll be in touch if your offer is accepted.
+          The current reserver has been notified by email. We'll be in touch if your offer is accepted.
         </p>
       </div>
     );
@@ -365,18 +339,19 @@ function CounterOfferForm({
     <>
       <div className="mb-6 rounded-lg border border-dashed p-4 text-sm text-muted-foreground">
         <p className="font-medium text-foreground">This item is reserved</p>
+        {product.serial_number && (
+          <p className="mt-1 font-mono text-xs">Unit: <strong>{product.serial_number}</strong></p>
+        )}
         <p className="mt-1">
-          You can submit a counter offer above the current price of{" "}
+          Submit a counter offer above{" "}
           <strong>KSh {Number(product.offer_price).toLocaleString()}</strong>. The current reserver
-          will be notified and given a chance to increase their offer.
+          will be emailed their unit serial number and given a chance to increase their offer.
         </p>
       </div>
       <h2 className="text-xl font-semibold text-foreground">Make a counter offer</h2>
       <form onSubmit={onSubmit} className="mt-4 space-y-3">
         <div>
-          <Label htmlFor="co-price">
-            Your offer (min KSh {minPrice.toLocaleString()})
-          </Label>
+          <Label htmlFor="co-price">Your offer (min KSh {minPrice.toLocaleString()})</Label>
           <Input
             id="co-price"
             type="number"
@@ -390,45 +365,19 @@ function CounterOfferForm({
         </div>
         <div>
           <Label htmlFor="co-name">Full name</Label>
-          <Input
-            id="co-name"
-            required
-            value={form.name}
-            onChange={(e) => setForm({ ...form, name: e.target.value })}
-            maxLength={120}
-          />
+          <Input id="co-name" required value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} maxLength={120} />
         </div>
         <div>
           <Label htmlFor="co-email">Email</Label>
-          <Input
-            id="co-email"
-            type="email"
-            required
-            value={form.email}
-            onChange={(e) => setForm({ ...form, email: e.target.value })}
-            maxLength={255}
-          />
+          <Input id="co-email" type="email" required value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} maxLength={255} />
         </div>
         <div>
           <Label htmlFor="co-phone">Phone</Label>
-          <Input
-            id="co-phone"
-            type="tel"
-            required
-            value={form.phone}
-            onChange={(e) => setForm({ ...form, phone: e.target.value })}
-            maxLength={40}
-          />
+          <Input id="co-phone" type="tel" required value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} maxLength={40} />
         </div>
         <div>
           <Label htmlFor="co-notes">Notes (optional)</Label>
-          <Textarea
-            id="co-notes"
-            value={form.notes}
-            onChange={(e) => setForm({ ...form, notes: e.target.value })}
-            maxLength={1000}
-            rows={3}
-          />
+          <Textarea id="co-notes" value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} maxLength={1000} rows={3} />
         </div>
         <Button type="submit" disabled={submitting} className="w-full">
           {submitting ? "Submitting…" : "Submit counter offer"}

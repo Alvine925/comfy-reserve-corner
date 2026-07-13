@@ -17,6 +17,7 @@ import {
   deleteProduct,
   updateProduct,
   updateReservationStatus,
+  syncGroupImages,
 } from "@/lib/products.functions";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -227,6 +228,7 @@ function ProductsTab() {
           <table className="w-full text-sm">
             <thead className="bg-muted">
               <tr>
+                <th className="p-3 text-left">Serial</th>
                 <th className="p-3 text-left">Name</th>
                 <th className="p-3 text-left">Offer price</th>
                 <th className="p-3 text-left">Acq. price</th>
@@ -237,6 +239,9 @@ function ProductsTab() {
             <tbody>
               {(data ?? []).map((p: ProductRow) => (
                 <tr key={p.id} className="border-t">
+                  <td className="p-3 font-mono text-xs text-muted-foreground">
+                    {(p as any).serial_number ?? "—"}
+                  </td>
                   <td className="p-3">{p.name}</td>
                   <td className="p-3">KSh {Number(p.offer_price).toLocaleString()}</td>
                   <td className="p-3">
@@ -277,7 +282,7 @@ function ProductsTab() {
               ))}
               {(data ?? []).length === 0 && (
                 <tr>
-                  <td colSpan={5} className="p-6 text-center text-muted-foreground">
+                  <td colSpan={6} className="p-6 text-center text-muted-foreground">
                     No products yet.
                   </td>
                 </tr>
@@ -302,7 +307,10 @@ function ProductDialog({
 }) {
   const createFn = useServerFn(createProduct);
   const updateFn = useServerFn(updateProduct);
+  const syncFn = useServerFn(syncGroupImages);
   const [open, setOpen] = useState(false);
+  const [quantity, setQuantity] = useState(1);
+  const [addQty, setAddQty] = useState(0);
   const [form, setForm] = useState({
     name: product?.name ?? "",
     short_description: product?.short_description ?? "",
@@ -328,6 +336,8 @@ function ProductDialog({
   function handleOpenChange(v: boolean) {
     setOpen(v);
     if (v) {
+      setQuantity(1);
+      setAddQty(0);
       setForm({
         name: product?.name ?? "",
         short_description: product?.short_description ?? "",
@@ -395,10 +405,26 @@ function ProductDialog({
       };
       if (product) {
         await updateFn({ data: { id: product.id, patch: payload } });
-        toast.success("Updated");
+        // If admin wants more units, create them now
+        if (addQty > 0) {
+          const extra = await createFn({ data: { ...payload, quantity: addQty } });
+          toast.success(`Updated + added ${extra.count} new unit${extra.count > 1 ? "s" : ""} (${extra.firstSerial} → ${extra.lastSerial})`);
+        } else if (imageUrls.length > 0) {
+          try {
+            const sync = await syncFn({ data: { product_id: product.id } });
+            if (sync.synced > 0) toast.success(`Updated — images synced to ${sync.synced} other unit${sync.synced > 1 ? "s" : ""}`);
+            else toast.success("Updated");
+          } catch { toast.success("Updated"); }
+        } else {
+          toast.success("Updated");
+        }
       } else {
-        await createFn({ data: payload });
-        toast.success("Created");
+        const result = await createFn({ data: { ...payload, quantity } });
+        if (result.count > 1) {
+          toast.success(`Created ${result.count} units (${result.firstSerial} → ${result.lastSerial})`);
+        } else {
+          toast.success(`Created — serial ${result.firstSerial ?? "assigned"}`);
+        }
       }
       setOpen(false);
       onSaved();
@@ -425,6 +451,23 @@ function ProductDialog({
               onChange={(e) => setForm({ ...form, name: e.target.value })}
             />
           </div>
+          {!product && (
+            <div>
+              <Label>Quantity (number of units to create)</Label>
+              <Input
+                type="number"
+                min={1}
+                max={500}
+                value={quantity}
+                onChange={(e) => setQuantity(Math.max(1, Math.min(500, Number(e.target.value))))}
+              />
+              {quantity > 1 && (
+                <p className="mt-1 text-xs text-muted-foreground">
+                  This will create {quantity} products sharing the same details, each with a unique serial number (e.g. {form.name ? `${form.name.replace(/[^a-zA-Z0-9]/g,"").slice(0,6).toUpperCase() || "PROD"}-001` : "PROD-001"} → …-{String(quantity).padStart(3,"0")}).
+                </p>
+              )}
+            </div>
+          )}
           <div>
             <Label>Short description</Label>
             <Input
@@ -514,6 +557,25 @@ function ProductDialog({
             </div>
           </div>
 
+          {product && (
+            <div className="rounded-lg border border-dashed p-3 space-y-1.5">
+              <Label>Add more units of this product</Label>
+              <Input
+                type="number"
+                min={0}
+                max={500}
+                value={addQty === 0 ? "" : addQty}
+                placeholder="0 — leave blank to skip"
+                onChange={(e) => setAddQty(Math.max(0, Math.min(500, Number(e.target.value) || 0)))}
+              />
+              {addQty > 0 && (
+                <p className="text-xs text-muted-foreground">
+                  Will create {addQty} extra unit{addQty > 1 ? "s" : ""} with the same details and new serial numbers, in addition to updating this one.
+                </p>
+              )}
+            </div>
+          )}
+
           <div className="flex gap-4 text-sm">
             <label className="inline-flex items-center gap-2">
               <input
@@ -533,7 +595,7 @@ function ProductDialog({
             </label>
           </div>
           <Button type="submit" disabled={busy || uploading} className="w-full">
-            {busy ? "Saving…" : "Save"}
+            {busy ? "Saving…" : addQty > 0 ? `Save + add ${addQty} unit${addQty > 1 ? "s" : ""}` : "Save"}
           </Button>
         </form>
       </DialogContent>

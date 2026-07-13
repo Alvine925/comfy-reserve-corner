@@ -1,0 +1,3 @@
+- [Serial numbers & batch creation](serial-numbers.md) — products have serial_number (TEXT UNIQUE); createProduct accepts quantity, generates N copies with prefix-NNN serials
+- [Image URLs are Lovable CDN](lovable-images.md) — existing image_url/image_urls in DB use /__l5e/assets-v1/ paths that only resolve on Lovable's platform; re-upload via admin to fix
+- [Migration needed before serial/quantity/counter-offers work](pending-migrations.md) — two SQL files must be run in Supabase before runtime features activate
