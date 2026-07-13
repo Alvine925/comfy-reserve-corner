@@ -48,7 +48,7 @@ export function reservationConfirmationHtml(opts: {
       <h2 style="margin:0 0 12px">Reservation confirmed</h2>
       <p>Hi ${escapeHtml(opts.customerName)},</p>
       <p>Thank you for reserving <strong>${escapeHtml(opts.productName)}</strong> for
-      <strong>$${opts.offerPrice.toFixed(2)}</strong>.</p>
+      <strong>KSh ${opts.offerPrice.toLocaleString()}</strong>.</p>
       <p>We've received your reservation and will contact you shortly to arrange pickup or delivery.</p>
       <p style="color:#666;font-size:13px;margin-top:24px">If you have any questions, simply reply to this email.</p>
     </div>

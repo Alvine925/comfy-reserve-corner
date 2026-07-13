@@ -234,7 +234,7 @@ function ProductsTab() {
                   <td className="p-3">{p.name}</td>
                   <td className="p-3">${Number(p.offer_price).toFixed(2)}</td>
                   <td className="p-3">
-                    {p.acquisition_price != null ? `$${Number(p.acquisition_price).toFixed(2)}` : "—"}
+                    {p.acquisition_price != null ? `KSh ${Number(p.acquisition_price).toLocaleString()}` : "—"}
                   </td>
                   <td className="p-3">
                     {!p.is_active ? "Inactive" : p.is_reserved ? "Reserved" : "Available"}
