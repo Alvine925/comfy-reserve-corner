@@ -124,7 +124,22 @@ function RootComponent() {
   return (
     <QueryClientProvider client={queryClient}>
       <CartProvider>
-        <Outlet />
+        <div className="flex min-h-screen flex-col">
+          <div className="flex-1">
+            <Outlet />
+          </div>
+          <footer className="border-t border-border py-4 text-center text-xs text-muted-foreground">
+            Powered by{" "}
+            <a
+              href="https://www.myjoyfullday.com"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="font-medium text-violet-700 underline underline-offset-2 hover:text-violet-500 transition-colors"
+            >
+              myjoyfullday.com
+            </a>
+          </footer>
+        </div>
         <CartDrawer />
         <CartButton />
         <Toaster />
