@@ -45,7 +45,7 @@ export const listActiveProducts = createServerFn({ method: "GET" }).handler(asyn
   );
   const { data, error } = await client
     .from("products")
-    .select("id,name,short_description,description,offer_price,image_url,image_urls,is_reserved,serial_number")
+    .select("id,name,short_description,description,offer_price,image_url,image_urls,is_reserved,serial_number,category")
     .eq("is_active", true)
     .order("created_at", { ascending: false });
   if (error) throw new Error(error.message);
@@ -157,6 +157,7 @@ const productBaseSchema = z.object({
   image_urls: z.array(z.string().url().max(2000)).max(20).optional(),
   is_active: z.boolean().optional(),
   is_reserved: z.boolean().optional(),
+  category: z.string().max(60).nullable().optional(),
 });
 
 // Create extends base with a quantity field (not stored; drives batch creation)

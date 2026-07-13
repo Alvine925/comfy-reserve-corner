@@ -2,61 +2,13 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { queryOptions, useSuspenseQuery } from "@tanstack/react-query";
 import { useMemo, useState } from "react";
 import { listActiveProducts } from "@/lib/products.functions";
+import { PRODUCT_CATEGORIES, CATEGORY_ICONS, categoryLabel } from "@/lib/product-categories";
 import { Input } from "@/components/ui/input";
 
 const productsQuery = queryOptions({
   queryKey: ["products", "active"],
   queryFn: () => listActiveProducts(),
 });
-
-// Category definitions — each has an emoji icon, label, and a name-matcher
-const CATEGORIES = [
-  {
-    key: "chairs",
-    label: "Chairs",
-    icon: "🪑",
-    match: (n: string) => /chair|stool|seat/i.test(n),
-  },
-  {
-    key: "desks",
-    label: "Desks",
-    icon: "🖥️",
-    match: (n: string) => /desk/i.test(n),
-  },
-  {
-    key: "tables",
-    label: "Tables",
-    icon: "🪵",
-    match: (n: string) => /table/i.test(n) && !/desk/i.test(n),
-  },
-  {
-    key: "sofas",
-    label: "Sofas",
-    icon: "🛋️",
-    match: (n: string) => /sofa|couch|lounge/i.test(n),
-  },
-  {
-    key: "storage",
-    label: "Storage",
-    icon: "🗄️",
-    match: (n: string) => /cabinet|shelf|drawer|storage|wardrobe|bookcase/i.test(n),
-  },
-  {
-    key: "beds",
-    label: "Beds",
-    icon: "🛏️",
-    match: (n: string) => /bed|mattress/i.test(n),
-  },
-  {
-    key: "other",
-    label: "Other",
-    icon: "📦",
-    match: (n: string) =>
-      !/(chair|stool|seat|table|desk|sofa|couch|lounge|cabinet|shelf|drawer|storage|wardrobe|bookcase|bed|mattress)/i.test(n),
-  },
-] as const;
-
-type CategoryKey = (typeof CATEGORIES)[number]["key"];
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -82,47 +34,35 @@ export const Route = createFileRoute("/")({
 
 function Browse() {
   const { data: products } = useSuspenseQuery(productsQuery);
-  const [activeCategory, setActiveCategory] = useState<CategoryKey | null>(null);
+  const [activeCategory, setActiveCategory] = useState<string | null>(null);
   const [query, setQuery] = useState("");
 
-  // Count products per category
-  const categoryCounts = useMemo(() => {
-    const counts: Record<string, number> = {};
-    for (const cat of CATEGORIES) {
-      counts[cat.key] = products.filter((p) => cat.match(p.name)).length;
-    }
-    return counts;
+  // Build category tiles — only show categories that have at least one product
+  const tiles = useMemo(() => {
+    return PRODUCT_CATEGORIES.map((cat) => {
+      const items = products.filter((p) => (p as any).category === cat.value);
+      const image = items.find((p) => p.image_url)?.image_url ?? null;
+      return { ...cat, count: items.length, image };
+    }).filter((c) => c.count > 0);
   }, [products]);
 
-  // Representative image per category (first product with an image)
-  const categoryImages = useMemo(() => {
-    const images: Record<string, string | null> = {};
-    for (const cat of CATEGORIES) {
-      const hit = products.find((p) => cat.match(p.name) && p.image_url);
-      images[cat.key] = hit?.image_url ?? null;
-    }
-    return images;
-  }, [products]);
-
-  // Products filtered for the active category + search
+  // Products in the selected category, filtered by search
   const filteredProducts = useMemo(() => {
     if (!activeCategory) return [];
-    const cat = CATEGORIES.find((c) => c.key === activeCategory)!;
     const q = query.trim().toLowerCase();
     return products.filter((p) => {
-      if (!cat.match(p.name)) return false;
+      if ((p as any).category !== activeCategory) return false;
       if (!q) return true;
       return (
         p.name.toLowerCase().includes(q) ||
-        (p.short_description ?? "").toLowerCase().includes(q) ||
-        (p.description ?? "").toLowerCase().includes(q)
+        (p.short_description ?? "").toLowerCase().includes(q)
       );
     });
   }, [products, activeCategory, query]);
 
-  const activeCategoryLabel = CATEGORIES.find((c) => c.key === activeCategory)?.label ?? "";
+  const activeTile = tiles.find((t) => t.value === activeCategory);
 
-  // ── Category grid view ──────────────────────────────────────
+  // ── Category grid ────────────────────────────────────────────
   if (!activeCategory) {
     return (
       <div className="min-h-screen bg-background">
@@ -138,75 +78,70 @@ function Browse() {
         </header>
 
         <main className="mx-auto max-w-6xl px-4 pb-20">
-          <div className="grid grid-cols-2 gap-5 sm:grid-cols-3 lg:grid-cols-3">
-            {CATEGORIES.filter((c) => categoryCounts[c.key] > 0).map((cat) => (
-              <button
-                key={cat.key}
-                type="button"
-                onClick={() => {
-                  setActiveCategory(cat.key);
-                  setQuery("");
-                }}
-                className="group relative overflow-hidden rounded-2xl border border-border bg-card text-left transition-shadow hover:shadow-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
-              >
-                {/* Image or gradient placeholder */}
-                <div className="aspect-[4/3] w-full overflow-hidden bg-muted/40">
-                  {categoryImages[cat.key] ? (
-                    <img
-                      src={categoryImages[cat.key]!}
-                      alt={cat.label}
-                      className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
-                    />
-                  ) : (
-                    <div className="flex h-full w-full items-center justify-center text-5xl">
-                      {cat.icon}
-                    </div>
-                  )}
-                </div>
-
-                {/* Label bar */}
-                <div className="flex items-center justify-between px-4 py-3">
-                  <div>
-                    <p className="font-semibold text-foreground">
-                      {cat.icon} {cat.label}
-                    </p>
-                    <p className="text-xs text-muted-foreground">
-                      {categoryCounts[cat.key]} item
-                      {categoryCounts[cat.key] !== 1 ? "s" : ""}
-                    </p>
+          {tiles.length === 0 ? (
+            <div className="rounded-lg border border-dashed p-12 text-center text-muted-foreground">
+              No products available yet.
+            </div>
+          ) : (
+            <div className="grid grid-cols-2 gap-5 sm:grid-cols-3">
+              {tiles.map((cat) => (
+                <button
+                  key={cat.value}
+                  type="button"
+                  onClick={() => { setActiveCategory(cat.value); setQuery(""); }}
+                  className="group relative overflow-hidden rounded-2xl border border-border bg-card text-left transition-shadow hover:shadow-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+                >
+                  <div className="aspect-[4/3] w-full overflow-hidden bg-muted/40">
+                    {cat.image ? (
+                      <img
+                        src={cat.image}
+                        alt={cat.label}
+                        className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
+                      />
+                    ) : (
+                      <div className="flex h-full w-full items-center justify-center text-5xl">
+                        {CATEGORY_ICONS[cat.value] ?? "📦"}
+                      </div>
+                    )}
                   </div>
-                  <span className="text-muted-foreground group-hover:text-foreground transition-colors text-lg">
-                    →
-                  </span>
-                </div>
-              </button>
-            ))}
-          </div>
+                  <div className="flex items-center justify-between px-4 py-3">
+                    <div>
+                      <p className="font-semibold text-foreground">
+                        {CATEGORY_ICONS[cat.value]} {cat.label}
+                      </p>
+                      <p className="text-xs text-muted-foreground">
+                        {cat.count} item{cat.count !== 1 ? "s" : ""}
+                      </p>
+                    </div>
+                    <span className="text-lg text-muted-foreground transition-colors group-hover:text-foreground">
+                      →
+                    </span>
+                  </div>
+                </button>
+              ))}
+            </div>
+          )}
         </main>
       </div>
     );
   }
 
-  // ── Product list view (within a category) ───────────────────
+  // ── Product list within a category ───────────────────────────
   return (
     <div className="min-h-screen bg-background">
       <header>
         <div className="mx-auto max-w-6xl px-4 py-8">
           <button
             type="button"
-            onClick={() => {
-              setActiveCategory(null);
-              setQuery("");
-            }}
+            onClick={() => { setActiveCategory(null); setQuery(""); }}
             className="mb-4 text-sm text-muted-foreground hover:text-foreground transition-colors"
           >
             ← All categories
           </button>
-
           <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
             <div>
               <h1 className="text-3xl font-bold tracking-tight text-foreground">
-                {CATEGORIES.find((c) => c.key === activeCategory)?.icon} {activeCategoryLabel}
+                {CATEGORY_ICONS[activeCategory] ?? "📦"} {activeTile?.label ?? categoryLabel(activeCategory)}
               </h1>
               <p className="mt-1 text-sm text-muted-foreground">
                 {filteredProducts.length} item{filteredProducts.length !== 1 ? "s" : ""}
@@ -214,7 +149,7 @@ function Browse() {
             </div>
             <Input
               type="search"
-              placeholder={`Search ${activeCategoryLabel.toLowerCase()}…`}
+              placeholder={`Search ${activeTile?.label.toLowerCase() ?? ""}…`}
               value={query}
               onChange={(e) => setQuery(e.target.value)}
               className="max-w-xs"
@@ -231,13 +166,7 @@ function Browse() {
         ) : (
           <div className="grid grid-cols-1 gap-x-8 gap-y-10 sm:grid-cols-2 lg:grid-cols-3">
             {filteredProducts.map((p) => (
-              <Link
-                key={p.id}
-                to="/product/$id"
-                params={{ id: p.id }}
-                className="group block"
-              >
-                {/* Image */}
+              <Link key={p.id} to="/product/$id" params={{ id: p.id }} className="group block">
                 <div className="aspect-square overflow-hidden rounded-xl bg-muted/30">
                   {p.image_url ? (
                     <img
@@ -252,8 +181,6 @@ function Browse() {
                     </div>
                   )}
                 </div>
-
-                {/* Info */}
                 <div className="pt-3">
                   <div className="flex items-start justify-between gap-2">
                     <h2 className="text-base font-semibold text-foreground leading-snug">
@@ -265,15 +192,12 @@ function Browse() {
                       </span>
                     )}
                   </div>
-
-                  {/* Serial number badge */}
                   {(p as any).serial_number && (
                     <span className="mt-1 inline-flex items-center gap-1 rounded bg-muted px-2 py-0.5 font-mono text-[11px] text-muted-foreground">
                       <span className="text-[9px] uppercase tracking-wider">S/N</span>
                       {(p as any).serial_number}
                     </span>
                   )}
-
                   {p.short_description && (
                     <p className="mt-1 line-clamp-2 text-xs text-muted-foreground">
                       {p.short_description}

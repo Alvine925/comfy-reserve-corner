@@ -19,6 +19,7 @@ import {
   updateReservationStatus,
   syncGroupImages,
 } from "@/lib/products.functions";
+import { PRODUCT_CATEGORIES, categoryLabel } from "@/lib/product-categories";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -230,6 +231,7 @@ function ProductsTab() {
               <tr>
                 <th className="p-3 text-left">Serial</th>
                 <th className="p-3 text-left">Name</th>
+                <th className="p-3 text-left">Category</th>
                 <th className="p-3 text-left">Offer price</th>
                 <th className="p-3 text-left">Acq. price</th>
                 <th className="p-3 text-left">Status</th>
@@ -243,6 +245,15 @@ function ProductsTab() {
                     {(p as any).serial_number ?? "—"}
                   </td>
                   <td className="p-3">{p.name}</td>
+                  <td className="p-3 text-sm">
+                    {(p as any).category ? (
+                      <span className="rounded-full bg-muted px-2 py-0.5 text-xs font-medium text-foreground">
+                        {categoryLabel((p as any).category)}
+                      </span>
+                    ) : (
+                      <span className="text-xs text-muted-foreground italic">— unset</span>
+                    )}
+                  </td>
                   <td className="p-3">KSh {Number(p.offer_price).toLocaleString()}</td>
                   <td className="p-3">
                     {p.acquisition_price != null
@@ -319,6 +330,7 @@ function ProductDialog({
     offer_price: product?.offer_price?.toString() ?? "",
     is_active: product?.is_active ?? true,
     is_reserved: product?.is_reserved ?? false,
+    category: (product as any)?.category ?? "",
   });
   // image_urls managed separately so we can add/remove
   const [imageUrls, setImageUrls] = useState<string[]>(
@@ -346,6 +358,7 @@ function ProductDialog({
         offer_price: product?.offer_price?.toString() ?? "",
         is_active: product?.is_active ?? true,
         is_reserved: product?.is_reserved ?? false,
+        category: (product as any)?.category ?? "",
       });
       setImageUrls(
         product?.image_urls?.length
@@ -402,6 +415,7 @@ function ProductDialog({
         image_urls: imageUrls,
         is_active: form.is_active,
         is_reserved: form.is_reserved,
+        category: form.category || null,
       };
       if (product) {
         // updateProduct now propagates all field changes to every sibling unit automatically
@@ -445,6 +459,24 @@ function ProductDialog({
               value={form.name}
               onChange={(e) => setForm({ ...form, name: e.target.value })}
             />
+          </div>
+          <div>
+            <Label>Category</Label>
+            <Select
+              value={form.category || ""}
+              onValueChange={(v) => setForm({ ...form, category: v })}
+            >
+              <SelectTrigger>
+                <SelectValue placeholder="Select a category…" />
+              </SelectTrigger>
+              <SelectContent>
+                {PRODUCT_CATEGORIES.map((cat) => (
+                  <SelectItem key={cat.value} value={cat.value}>
+                    {cat.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
           {!product && (
             <div>
