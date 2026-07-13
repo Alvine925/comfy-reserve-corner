@@ -101,15 +101,8 @@ function ProductPage() {
       </header>
 
       <main className="mx-auto grid max-w-5xl gap-8 px-4 py-8 md:grid-cols-2">
-        <div className="aspect-square overflow-hidden rounded-lg border bg-muted">
-          {product.image_url ? (
-            <img src={product.image_url} alt={product.name} className="h-full w-full object-cover" />
-          ) : (
-            <div className="flex h-full w-full items-center justify-center text-muted-foreground">
-              No image
-            </div>
-          )}
-        </div>
+        <ProductGallery images={((product.image_urls?.length ? product.image_urls : product.image_url ? [product.image_url] : []) as string[])} name={product.name} />
+
 
         <div>
           <h1 className="text-3xl font-bold">{product.name}</h1>
