@@ -77,14 +77,18 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
     meta: [
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
-      { title: "Lovable App" },
-      { name: "description", content: "Lovable Generated Project" },
+      { title: "Furniture for Sale — Browse & Reserve" },
+      { name: "description", content: "Browse quality pre-owned furniture and reserve your favorite pieces online." },
       { name: "author", content: "Lovable" },
-      { property: "og:title", content: "Lovable App" },
-      { property: "og:description", content: "Lovable Generated Project" },
+      { property: "og:title", content: "Furniture for Sale — Browse & Reserve" },
+      { property: "og:description", content: "Browse quality pre-owned furniture and reserve your favorite pieces online." },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },
       { name: "twitter:site", content: "@Lovable" },
+      { name: "twitter:title", content: "Furniture for Sale — Browse & Reserve" },
+      { name: "twitter:description", content: "Browse quality pre-owned furniture and reserve your favorite pieces online." },
+      { property: "og:image", content: "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/5f86df09-28a5-42fb-bbc1-4cbc7a9cc0e0/id-preview-ca274abd--0bf54da4-04a7-456c-8a1f-8d5a1776a9d3.lovable.app-1783925750604.png" },
+      { name: "twitter:image", content: "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/5f86df09-28a5-42fb-bbc1-4cbc7a9cc0e0/id-preview-ca274abd--0bf54da4-04a7-456c-8a1f-8d5a1776a9d3.lovable.app-1783925750604.png" },
     ],
     links: [
       {
