@@ -215,12 +215,12 @@ function Browse() {
               </span>
             </div>
 
-            {/* Mobile filter button */}
+            {/* Filter button — always visible */}
             <button
               type="button"
               onClick={() => setFilterOpen(true)}
               className={cn(
-                "relative flex sm:hidden shrink-0 items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-medium transition-all",
+                "relative flex shrink-0 items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-medium transition-all",
                 activeFilterCount > 0
                   ? "border-foreground bg-foreground text-background"
                   : "border-border text-muted-foreground hover:border-foreground/40 hover:text-foreground",
