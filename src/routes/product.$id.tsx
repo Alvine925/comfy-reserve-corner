@@ -2,6 +2,39 @@ import { createFileRoute, Link, notFound, useRouter } from "@tanstack/react-rout
 import { queryOptions, useSuspenseQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { useState } from "react";
+
+function ProductGallery({ images, name }: { images: string[]; name: string }) {
+  const [active, setActive] = useState(0);
+  if (images.length === 0) {
+    return (
+      <div className="aspect-square overflow-hidden rounded-lg border bg-muted flex items-center justify-center text-muted-foreground">
+        No image
+      </div>
+    );
+  }
+  return (
+    <div>
+      <div className="aspect-square overflow-hidden rounded-lg border bg-muted">
+        <img src={images[active]} alt={name} className="h-full w-full object-cover" />
+      </div>
+      {images.length > 1 && (
+        <div className="mt-3 grid grid-cols-5 gap-2">
+          {images.map((src, i) => (
+            <button
+              key={src + i}
+              type="button"
+              onClick={() => setActive(i)}
+              className={`aspect-square overflow-hidden rounded border bg-muted ${i === active ? "ring-2 ring-primary" : ""}`}
+            >
+              <img src={src} alt={`${name} ${i + 1}`} className="h-full w-full object-cover" />
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 import { toast } from "sonner";
 import { getProduct, createReservation } from "@/lib/products.functions";
 import { Button } from "@/components/ui/button";
