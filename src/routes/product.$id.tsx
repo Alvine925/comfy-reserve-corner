@@ -11,6 +11,7 @@ import {
   createCounterOffer,
   incrementProductViews,
   toggleProductLike,
+  getRelatedProducts,
 } from "@/lib/products.functions";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -128,6 +129,11 @@ function ProductPage() {
   const { data: product } = useSuspenseQuery(productQuery(id));
   const { data: groupInfo } = useQuery(groupQuery(id));
   const { data: availableUnits } = useQuery(availableUnitsQuery(id));
+  const { data: related } = useQuery({
+    queryKey: ["related", id],
+    queryFn: () => getRelatedProducts({ data: { category: (product as any).category ?? "", excludeName: product?.name ?? "" } }),
+    enabled: !!(product as any).category,
+  });
   const router = useRouter();
 
   const incrementViews = useServerFn(incrementProductViews);
@@ -136,12 +142,13 @@ function ProductPage() {
   const [isLiked, setIsLiked] = useState(false);
   const [likesCount, setLikesCount] = useState<number | null>(null);
   const [viewsCount, setViewsCount] = useState<number | null>(null);
+  const [viewsToday, setViewsToday] = useState<number | null>(null);
   const [likeLoading, setLikeLoading] = useState(false);
 
   // Increment views once on mount
   useEffect(() => {
     incrementViews({ data: { id } })
-      .then((res) => setViewsCount(res.views))
+      .then((res) => { setViewsCount(res.views); setViewsToday(res.views_today); })
       .catch(() => {});
   }, [id]);
 
@@ -254,6 +261,20 @@ function ProductPage() {
             </button>
           </div>
 
+          {/* Viewed today signal */}
+          {viewsToday != null && viewsToday > 1 && (
+            <p className="mt-1.5 flex items-center gap-1 text-xs text-orange-500 font-medium">
+              🔥 {viewsToday} {viewsToday === 1 ? "person" : "people"} viewed this today
+            </p>
+          )}
+
+          {/* Only X left urgency */}
+          {groupInfo && groupInfo.available > 0 && groupInfo.available <= 3 && (
+            <p className="mt-1.5 inline-flex items-center gap-1.5 rounded-full bg-orange-50 px-2.5 py-1 text-xs font-bold text-orange-600 border border-orange-200">
+              ⚡ {groupInfo.available === 1 ? "Last unit available!" : `Only ${groupInfo.available} left!`}
+            </p>
+          )}
+
           {groupInfo && groupInfo.total > 1 && (
             <p className="mt-1.5 text-xs text-sky-500 sm:mt-2 sm:text-sm">
               {groupInfo.available} of {groupInfo.total} unit{groupInfo.total !== 1 ? "s" : ""} available
@@ -280,6 +301,51 @@ function ProductPage() {
           </div>
         </div>
       </main>
+
+      {/* Related products */}
+      {related && related.length > 0 && (
+        <section className="mx-auto max-w-5xl px-4 pb-14">
+          <h2 className="mb-4 text-sm font-semibold text-foreground sm:text-base">
+            Other {((product as any).category as string ?? "").replace(/_/g, " ")} you might like
+          </h2>
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-4 sm:gap-4">
+            {related.map((r) => {
+              const rImages = (r.image_urls?.length ? r.image_urls : r.image_url ? [r.image_url] : []) as string[];
+              return (
+                <Link
+                  key={r.id}
+                  to="/product/$id"
+                  params={{ id: r.id }}
+                  className="group block rounded-xl border border-border overflow-hidden hover:shadow-md transition-shadow"
+                >
+                  <div className="aspect-square bg-muted/20 overflow-hidden">
+                    {rImages[0] ? (
+                      <img
+                        src={rImages[0]}
+                        alt={cleanName(r.name)}
+                        className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
+                        loading="lazy"
+                      />
+                    ) : (
+                      <div className="flex h-full w-full items-center justify-center text-muted-foreground/20">
+                        <svg xmlns="http://www.w3.org/2000/svg" className="h-10 w-10" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1}><rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8M12 17v4"/></svg>
+                      </div>
+                    )}
+                  </div>
+                  <div className="p-2.5">
+                    <p className="text-[11px] font-semibold leading-snug text-violet-800 group-hover:text-violet-600 line-clamp-2 sm:text-xs">
+                      {cleanName(r.name)}
+                    </p>
+                    <p className="mt-1 text-[11px] font-bold text-emerald-600 sm:text-xs">
+                      KSh {Number(r.offer_price).toLocaleString()}
+                    </p>
+                  </div>
+                </Link>
+              );
+            })}
+          </div>
+        </section>
+      )}
     </div>
   );
 }

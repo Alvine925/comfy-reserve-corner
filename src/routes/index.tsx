@@ -139,6 +139,15 @@ function Browse() {
   const availableCount = filteredProducts.filter((p) => !p.is_reserved).length;
   const reservedCount = filteredProducts.filter((p) => p.is_reserved).length;
 
+  // Count available units per product name (for "Only X left" badge)
+  const nameAvailableCount = useMemo(() => {
+    const map = new Map<string, number>();
+    for (const p of products) {
+      if (!p.is_reserved) map.set(p.name, (map.get(p.name) ?? 0) + 1);
+    }
+    return map;
+  }, [products]);
+
   // Count active non-default filters (for the badge on the mobile filter button)
   const activeFilterCount = (availability !== "all" ? 1 : 0);
 
@@ -487,6 +496,15 @@ function Browse() {
                       Reserved
                     </span>
                   )}
+                  {!p.is_reserved && (() => {
+                    const left = nameAvailableCount.get(p.name) ?? 0;
+                    if (left > 3) return null;
+                    return (
+                      <span className="absolute bottom-1.5 left-1.5 rounded-full bg-orange-500 px-1.5 py-px text-[10px] font-bold text-white shadow sm:bottom-2 sm:left-2 sm:px-2">
+                        {left === 1 ? "Last one!" : `Only ${left} left!`}
+                      </span>
+                    );
+                  })()}
                 </div>
                 <div className="mt-2 sm:mt-3">
                   <h2 className="text-xs font-semibold leading-snug text-violet-800 transition-colors group-hover:text-violet-600 sm:text-sm">

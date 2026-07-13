@@ -59,10 +59,47 @@ export const incrementProductViews = createServerFn({ method: "POST" })
   .inputValidator((d: unknown) => z.object({ id: z.string().uuid() }).parse(d))
   .handler(async ({ data }) => {
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { incrementDailyViews } = await import("@/lib/view-tracker.server");
     const { data: p } = await supabaseAdmin.from("products").select("views").eq("id", data.id).single();
     const newViews = (p?.views ?? 0) + 1;
     await supabaseAdmin.from("products").update({ views: newViews }).eq("id", data.id);
-    return { views: newViews };
+    const views_today = incrementDailyViews(data.id);
+    return { views: newViews, views_today };
+  });
+
+// ─────────────────────────────────────────────
+// Public: fetch related products (same category, different name).
+// ─────────────────────────────────────────────
+export const getRelatedProducts = createServerFn({ method: "GET" })
+  .inputValidator((d: unknown) =>
+    z.object({ category: z.string(), excludeName: z.string() }).parse(d),
+  )
+  .handler(async ({ data }) => {
+    const { createClient } = await import("@supabase/supabase-js");
+    const client = createClient(
+      process.env.SUPABASE_URL!,
+      process.env.SUPABASE_PUBLISHABLE_KEY!,
+      { auth: { storage: undefined, persistSession: false, autoRefreshToken: false } },
+    );
+    const { data: rows } = await client
+      .from("products")
+      .select("id,name,offer_price,image_url,image_urls,short_description,category")
+      .eq("is_active", true)
+      .eq("category", data.category)
+      .neq("name", data.excludeName)
+      .eq("is_reserved", false)
+      .order("created_at", { ascending: false })
+      .limit(20);
+    // Deduplicate by name — show one card per unique product type
+    const seen = new Set<string>();
+    const unique: typeof rows = [];
+    for (const p of rows ?? []) {
+      if (!seen.has(p.name) && unique.length < 4) {
+        seen.add(p.name);
+        unique.push(p);
+      }
+    }
+    return unique;
   });
 
 // ─────────────────────────────────────────────
