@@ -143,21 +143,23 @@ export function CartDrawer() {
             </div>
 
             {/* Order document CTA */}
-            <div className="flex gap-2">
-              <Button
-                className="flex-1 gap-2"
+            <div className="flex items-center justify-center gap-6">
+              <button
+                type="button"
+                className="flex items-center gap-1.5 text-sm font-medium text-foreground underline underline-offset-2 hover:text-primary transition-colors"
                 onClick={() => printReservationDocument(confirmed)}
               >
-                <FileText className="h-4 w-4" />
+                <FileText className="h-3.5 w-3.5" />
                 Download / Print Order Sheet
-              </Button>
-              <Button variant="outline" className="flex-1" onClick={handleClose}>
+              </button>
+              <button
+                type="button"
+                className="text-sm text-muted-foreground underline underline-offset-2 hover:text-foreground transition-colors"
+                onClick={handleClose}
+              >
                 Done — keep browsing
-              </Button>
+              </button>
             </div>
-            <p className="text-center text-[11px] text-muted-foreground -mt-2">
-              Full terms &amp; conditions are included in the document.
-            </p>
           </div>
         ) : items.length === 0 ? (
           /* ── Empty state ── */
