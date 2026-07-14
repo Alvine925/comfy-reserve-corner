@@ -14,7 +14,7 @@ import {
   OtherFurnitureIcon,
 } from "@/lib/category-icons";
 
-type IconComponent = (props: { className?: string; strokeWidth?: number }) => JSX.Element;
+type IconComponent = (props: { className?: string; strokeWidth?: number }) => React.ReactElement;
 
 export const CATEGORY_ICON_COMPONENTS: Record<string, IconComponent> = {
   chairs:            ChairIcon,
