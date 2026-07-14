@@ -391,9 +391,6 @@ export const createReservation = createServerFn({ method: "POST" })
   .inputValidator((d: unknown) => reservationSchema.parse(d))
   .handler(async ({ data }) => {
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-    const { sendBrevoEmail, reservationConfirmationHtml, adminNotificationHtml } = await import(
-      "./email.server"
-    );
 
     const qty = data.quantity ?? 1;
 
