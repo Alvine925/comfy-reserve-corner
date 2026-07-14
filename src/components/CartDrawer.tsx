@@ -133,8 +133,8 @@ export function CartDrawer() {
             <Separator />
 
             {/* T&C notice */}
-            <div className="rounded-lg bg-amber-50 border border-amber-200 px-3 py-3 text-[11.5px] leading-relaxed text-amber-800 space-y-1">
-              <p className="font-semibold text-amber-900">Please read before proceeding</p>
+            <div className="py-1 text-[11.5px] leading-relaxed text-muted-foreground space-y-1">
+              <p className="font-semibold text-foreground">Please read before proceeding</p>
               <ul className="list-disc list-inside space-y-1">
                 <li>Reservations go to the <strong>highest bidder</strong> — this is not a guaranteed purchase.</li>
                 <li>Your reservation is valid for <strong>7 days</strong> from today.</li>
