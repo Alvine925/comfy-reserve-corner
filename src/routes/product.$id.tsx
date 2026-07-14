@@ -556,9 +556,9 @@ function CounterOfferForm({
 
   if (submitted) {
     return (
-      <div className="rounded-lg border border-green-200 bg-green-50 p-6 text-center">
-        <p className="font-semibold text-green-800">Counter offer submitted!</p>
-        <p className="mt-1 text-sm text-green-700">
+      <div className="py-4 text-center">
+        <p className="font-semibold text-foreground">Counter offer submitted!</p>
+        <p className="mt-1 text-sm text-muted-foreground">
           The current reserver has been notified by email. We'll be in touch if your offer is accepted.
         </p>
       </div>
