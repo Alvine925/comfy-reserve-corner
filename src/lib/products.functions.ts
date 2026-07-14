@@ -441,34 +441,39 @@ export const createReservation = createServerFn({ method: "POST" })
 
     await supabaseAdmin.from("products").update({ is_reserved: true }).in("id", unitIds);
 
+    const reference = `RSV-${Date.now().toString(36).toUpperCase()}-${Math.random().toString(36).slice(2, 5).toUpperCase()}`;
+    const dateStr = new Date().toLocaleDateString("en-GB", { day: "numeric", month: "long", year: "numeric" });
+
+    const emailItems = availableUnits.map((u: any) => ({
+      name: product.name,
+      serial_number: u.serial_number ?? null,
+      price: Number(product.offer_price),
+    }));
+
     await supabaseAdmin.functions.invoke("send-email", {
       body: {
         type: "reservation_customer",
         customer_email: data.customer_email,
         customer_name: data.customer_name,
-        product_name: product.name,
-        offer_price: Number(product.offer_price),
-        quantity: qty,
-        serial_numbers: serialNumbers,
+        reference,
+        date: dateStr,
+        items: emailItems,
       },
     });
 
-    const adminEmail = process.env.ADMIN_NOTIFY_EMAIL;
-    if (adminEmail) {
-      await supabaseAdmin.functions.invoke("send-email", {
-        body: {
-          type: "reservation_admin",
-          admin_email: adminEmail,
-          product_name: product.name,
-          customer_name: data.customer_name,
-          customer_email: data.customer_email,
-          customer_phone: data.customer_phone,
-          notes: data.notes,
-          quantity: qty,
-          serial_numbers: serialNumbers,
-        },
-      });
-    }
+    await supabaseAdmin.functions.invoke("send-email", {
+      body: {
+        type: "reservation_admin",
+        product_name: product.name,
+        customer_name: data.customer_name,
+        customer_email: data.customer_email,
+        customer_phone: data.customer_phone,
+        notes: data.notes,
+        quantity: qty,
+        serial_numbers: serialNumbers,
+        reference,
+      },
+    });
 
     return { ok: true, id: reservation.id, serialNumbers };
   });
@@ -543,22 +548,18 @@ export const createCounterOffer = createServerFn({ method: "POST" })
       });
     }
 
-    const adminEmail = process.env.ADMIN_NOTIFY_EMAIL;
-    if (adminEmail) {
-      await supabaseAdmin.functions.invoke("send-email", {
-        body: {
-          type: "counter_offer_admin",
-          admin_email: adminEmail,
-          product_name: product.name,
-          serial_number: product.serial_number ?? undefined,
-          counter_price: data.counter_price,
-          customer_name: data.customer_name,
-          customer_email: data.customer_email,
-          customer_phone: data.customer_phone,
-          notes: data.notes,
-        },
-      });
-    }
+    await supabaseAdmin.functions.invoke("send-email", {
+      body: {
+        type: "counter_offer_admin",
+        product_name: product.name,
+        serial_number: product.serial_number ?? undefined,
+        counter_price: data.counter_price,
+        customer_name: data.customer_name,
+        customer_email: data.customer_email,
+        customer_phone: data.customer_phone,
+        notes: data.notes,
+      },
+    });
 
     return { ok: true, id: co.id };
   });
@@ -733,34 +734,39 @@ export const createCartReservation = createServerFn({ method: "POST" })
     const productNames = [...new Set((units ?? []).map((u: any) => u.name as string))];
     const totalPrice = (units ?? []).reduce((sum: number, u: any) => sum + Number(u.offer_price), 0);
 
+    const reference = `RSV-${Date.now().toString(36).toUpperCase()}-${Math.random().toString(36).slice(2, 5).toUpperCase()}`;
+    const dateStr = new Date().toLocaleDateString("en-GB", { day: "numeric", month: "long", year: "numeric" });
+
+    const emailItems = (units ?? []).map((u: any) => ({
+      name: u.name as string,
+      serial_number: (u.serial_number ?? null) as string | null,
+      price: Number(u.offer_price),
+    }));
+
     await supabaseAdmin.functions.invoke("send-email", {
       body: {
         type: "reservation_customer",
         customer_email: data.customer_email,
         customer_name: data.customer_name,
-        product_name: productNames.join(", "),
-        offer_price: totalPrice,
-        quantity: unitIds.length,
-        serial_numbers: serialNumbers,
+        reference,
+        date: dateStr,
+        items: emailItems,
       },
     });
 
-    const adminEmail = process.env.ADMIN_NOTIFY_EMAIL;
-    if (adminEmail) {
-      await supabaseAdmin.functions.invoke("send-email", {
-        body: {
-          type: "reservation_admin",
-          admin_email: adminEmail,
-          product_name: productNames.join(", "),
-          customer_name: data.customer_name,
-          customer_email: data.customer_email,
-          customer_phone: data.customer_phone,
-          notes: data.notes,
-          quantity: unitIds.length,
-          serial_numbers: serialNumbers,
-        },
-      });
-    }
+    await supabaseAdmin.functions.invoke("send-email", {
+      body: {
+        type: "reservation_admin",
+        product_name: productNames.join(", "),
+        customer_name: data.customer_name,
+        customer_email: data.customer_email,
+        customer_phone: data.customer_phone,
+        notes: data.notes,
+        quantity: unitIds.length,
+        serial_numbers: serialNumbers,
+        reference,
+      },
+    });
 
     return { ok: true, serialNumbers };
   });
