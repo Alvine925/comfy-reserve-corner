@@ -161,6 +161,21 @@ export function CartDrawer() {
                 Done — keep browsing
               </button>
             </div>
+
+            {/* Powered by */}
+            <div className="mt-auto pt-4 border-t border-border text-center">
+              <p className="mb-1.5 text-[9px] font-semibold uppercase tracking-[0.15em] text-muted-foreground/50">
+                Powered by
+              </p>
+              <a
+                href="https://www.myjoyfullday.com"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-block rounded-full bg-foreground px-3 py-1 text-[10px] font-bold tracking-wide text-background transition-opacity hover:opacity-75"
+              >
+                My Joyfullday
+              </a>
+            </div>
           </div>
         ) : items.length === 0 ? (
           /* ── Empty state ── */

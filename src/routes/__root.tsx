@@ -95,7 +95,7 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
     ],
     links: [
       { rel: "stylesheet", href: appCss },
-      { rel: "icon", href: "/favicon.ico", type: "image/x-icon" },
+      { rel: "icon", href: "/favicon.png", type: "image/png" },
     ],
   }),
   shellComponent: RootShell,
@@ -128,16 +128,21 @@ function RootComponent() {
           <div className="flex-1">
             <Outlet />
           </div>
-          <footer className="border-t border-border py-4 text-center text-xs text-muted-foreground">
-            Powered by{" "}
+          <footer className="border-t border-border py-6 text-center">
+            <p className="mb-2 text-[10px] font-semibold uppercase tracking-[0.15em] text-muted-foreground/60">
+              Powered by
+            </p>
             <a
               href="https://www.myjoyfullday.com"
               target="_blank"
               rel="noopener noreferrer"
-              className="font-medium text-violet-700 underline underline-offset-2 hover:text-violet-500 transition-colors"
+              className="inline-block rounded-full bg-foreground px-4 py-1.5 text-[11px] font-bold tracking-wide text-background transition-opacity hover:opacity-75"
             >
-              myjoyfullday.com
+              My Joyfullday
             </a>
+            <p className="mt-2 text-[10px] text-muted-foreground/50">
+              myjoyfullday.com
+            </p>
           </footer>
         </div>
         <CartDrawer />

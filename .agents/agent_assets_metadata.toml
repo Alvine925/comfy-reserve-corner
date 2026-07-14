@@ -1,0 +1,8 @@
+uploads = []
+generated = []
+
+[[outputs]]
+id = "MEK5a7itl-Kj_j05pbWY3"
+uri = "file://public/favicon.png"
+type = "image"
+title = "Favicon — My Joyfullday furniture icon"

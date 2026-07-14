@@ -186,10 +186,38 @@ export function printReservationDocument(data: ReservationDocData): void {
   /* ── Footer ── */
   .doc-footer {
     text-align: center;
-    font-size: 10px;
-    color: #aaa;
     border-top: 1px solid #eee;
-    padding-top: 14px;
+    padding-top: 20px;
+    margin-top: 8px;
+  }
+  .doc-footer .doc-meta {
+    font-size: 10px;
+    color: #bbb;
+    margin-bottom: 12px;
+  }
+  .doc-footer .powered-label {
+    font-size: 9px;
+    font-weight: 700;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    color: #ccc;
+    margin-bottom: 8px;
+  }
+  .doc-footer .powered-pill {
+    display: inline-block;
+    background: #1a1a1a;
+    color: #fff;
+    text-decoration: none;
+    padding: 5px 16px;
+    border-radius: 999px;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.03em;
+  }
+  .doc-footer .powered-url {
+    font-size: 9px;
+    color: #ccc;
+    margin-top: 6px;
   }
 
   /* ── Print ── */
@@ -323,7 +351,10 @@ ${
 </div>
 
 <div class="doc-footer">
-  Furniture Collection · This document was generated automatically on ${escHtml(data.date)} · Reference ${escHtml(data.reference)}
+  <p class="doc-meta">Furniture Collection &nbsp;·&nbsp; Generated ${escHtml(data.date)} &nbsp;·&nbsp; Ref ${escHtml(data.reference)}</p>
+  <p class="powered-label">Powered by</p>
+  <a class="powered-pill" href="https://www.myjoyfullday.com" target="_blank">My Joyfullday</a>
+  <p class="powered-url">myjoyfullday.com</p>
 </div>
 
 <script>
