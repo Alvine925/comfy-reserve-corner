@@ -143,20 +143,21 @@ export function CartDrawer() {
             </div>
 
             {/* Order document CTA */}
-            <Button
-              className="w-full gap-2"
-              onClick={() => printReservationDocument(confirmed)}
-            >
-              <FileText className="h-4 w-4" />
-              Download / Print Order Sheet
-            </Button>
+            <div className="flex gap-2">
+              <Button
+                className="flex-1 gap-2"
+                onClick={() => printReservationDocument(confirmed)}
+              >
+                <FileText className="h-4 w-4" />
+                Download / Print Order Sheet
+              </Button>
+              <Button variant="outline" className="flex-1" onClick={handleClose}>
+                Done — keep browsing
+              </Button>
+            </div>
             <p className="text-center text-[11px] text-muted-foreground -mt-2">
               Full terms &amp; conditions are included in the document.
             </p>
-
-            <Button variant="outline" className="w-full" onClick={handleClose}>
-              Done — keep browsing
-            </Button>
           </div>
         ) : items.length === 0 ? (
           /* ── Empty state ── */
