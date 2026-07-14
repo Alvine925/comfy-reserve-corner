@@ -143,7 +143,7 @@ export function CartDrawer() {
             </div>
 
             {/* Order document CTA */}
-            <div className="flex items-center justify-center gap-6">
+            <div className="flex flex-col items-center gap-2">
               <button
                 type="button"
                 className="flex items-center gap-1.5 text-sm font-medium text-foreground underline underline-offset-2 hover:text-primary transition-colors"
@@ -154,7 +154,7 @@ export function CartDrawer() {
               </button>
               <button
                 type="button"
-                className="text-sm text-muted-foreground underline underline-offset-2 hover:text-foreground transition-colors"
+                className="text-sm text-muted-foreground hover:text-foreground transition-colors"
                 onClick={handleClose}
               >
                 Done — keep browsing
