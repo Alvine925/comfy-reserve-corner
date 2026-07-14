@@ -690,9 +690,6 @@ export const createCartReservation = createServerFn({ method: "POST" })
   .inputValidator((d: unknown) => cartReservationSchema.parse(d))
   .handler(async ({ data }) => {
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-    const { sendBrevoEmail, reservationConfirmationHtml, adminNotificationHtml } = await import(
-      "./email.server"
-    );
 
     const unitIds = data.items.map((i) => i.unit_id);
 
@@ -719,7 +716,7 @@ export const createCartReservation = createServerFn({ method: "POST" })
       customer_email: data.customer_email,
       customer_phone: data.customer_phone,
       notes: data.notes ?? null,
-      status: "pending",
+      status: "pending" as const,
       quantity: 1,
     }));
 
@@ -736,32 +733,32 @@ export const createCartReservation = createServerFn({ method: "POST" })
     const productNames = [...new Set((units ?? []).map((u: any) => u.name as string))];
     const totalPrice = (units ?? []).reduce((sum: number, u: any) => sum + Number(u.offer_price), 0);
 
-    await sendBrevoEmail({
-      to: { email: data.customer_email, name: data.customer_name },
-      subject: `Reservation confirmed: ${productNames.length === 1 ? productNames[0] : `${unitIds.length} items`}`,
-      htmlContent: reservationConfirmationHtml({
-        customerName: data.customer_name,
-        productName: productNames.join(", "),
-        offerPrice: totalPrice,
+    await supabaseAdmin.functions.invoke("send-email", {
+      body: {
+        type: "reservation_customer",
+        customer_email: data.customer_email,
+        customer_name: data.customer_name,
+        product_name: productNames.join(", "),
+        offer_price: totalPrice,
         quantity: unitIds.length,
-        serialNumbers,
-      }),
+        serial_numbers: serialNumbers,
+      },
     });
 
     const adminEmail = process.env.ADMIN_NOTIFY_EMAIL;
     if (adminEmail) {
-      await sendBrevoEmail({
-        to: { email: adminEmail },
-        subject: `New cart reservation: ${unitIds.length} item(s) from ${data.customer_name}`,
-        htmlContent: adminNotificationHtml({
-          productName: productNames.join(", "),
-          customerName: data.customer_name,
-          customerEmail: data.customer_email,
-          customerPhone: data.customer_phone,
+      await supabaseAdmin.functions.invoke("send-email", {
+        body: {
+          type: "reservation_admin",
+          admin_email: adminEmail,
+          product_name: productNames.join(", "),
+          customer_name: data.customer_name,
+          customer_email: data.customer_email,
+          customer_phone: data.customer_phone,
           notes: data.notes,
           quantity: unitIds.length,
-          serialNumbers,
-        }),
+          serial_numbers: serialNumbers,
+        },
       });
     }
 
