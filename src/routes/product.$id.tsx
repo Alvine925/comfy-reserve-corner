@@ -448,7 +448,7 @@ function SerialPickerPanel({
             )}
           </div>
         ) : (
-          <>
+          <div className="space-y-2">
             {/* Selected serial badge */}
             {selectedUnit && (
               <div className="flex items-center gap-2 rounded-md bg-indigo-50 border border-indigo-200 px-3 py-2">
@@ -458,24 +458,24 @@ function SerialPickerPanel({
               </div>
             )}
             <div className="relative">
-            <select
-              id="serial-select"
-              value={selectedUnitId}
-              onChange={(e) => setSelectedUnitId(e.target.value)}
-              className="w-full appearance-none rounded-lg border border-input bg-background px-4 py-2.5 pr-10 font-mono text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
-            >
-              {units.map((u) => {
-                const inCart = cartUnitIds.has(u.id);
-                return (
-                  <option key={u.id} value={u.id}>
-                    {u.serial_number ?? u.id}{inCart ? "  ✓ in cart" : ""}
-                  </option>
-                );
-              })}
-            </select>
-            <ChevronDown className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+              <select
+                id="serial-select"
+                value={selectedUnitId}
+                onChange={(e) => setSelectedUnitId(e.target.value)}
+                className="w-full appearance-none rounded-lg border border-input bg-background px-4 py-2.5 pr-10 font-mono text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+              >
+                {units.map((u) => {
+                  const inCart = cartUnitIds.has(u.id);
+                  return (
+                    <option key={u.id} value={u.id}>
+                      {u.serial_number ?? u.id}{inCart ? "  ✓ in cart" : ""}
+                    </option>
+                  );
+                })}
+              </select>
+              <ChevronDown className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+            </div>
           </div>
-          </>
         )}
       </div>
 

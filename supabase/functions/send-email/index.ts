@@ -17,10 +17,48 @@ const CORS = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
+const SITE_URL   = "https://comfy-reserve.vercel.app";
+const ADMIN_URL  = `${SITE_URL}/alvookado`;
+const BRAND_URL  = "https://myjoyfullday.com";
+const BRAND_NAME = "My Joyfullday";
+
 function esc(s: string): string {
   return String(s ?? "")
     .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")
     .replace(/"/g, "&quot;").replace(/'/g, "&#039;");
+}
+
+// ── Shared components ────────────────────────────────────────────────────────
+function ctaButton(href: string, label: string, bg = "#1a1a1a"): string {
+  return `
+  <div style="text-align:center;margin:24px 0">
+    <a href="${href}" style="display:inline-block;background:${bg};color:#fff;text-decoration:none;
+       padding:14px 32px;border-radius:8px;font-weight:700;font-size:14px;letter-spacing:0.3px">
+      ${label}
+    </a>
+  </div>`;
+}
+
+function poweredByFooter(): string {
+  return `
+  <div style="margin-top:36px;padding-top:20px;border-top:1px solid #e5e5e5;text-align:center">
+    <p style="margin:0 0 10px;font-size:11px;color:#aaa;text-transform:uppercase;letter-spacing:1.5px">Powered by</p>
+    <a href="${BRAND_URL}" style="display:inline-block;background:#1a1a1a;color:#fff;text-decoration:none;
+       padding:8px 22px;border-radius:20px;font-size:12px;font-weight:700;letter-spacing:0.5px">
+      ${BRAND_NAME}
+    </a>
+    <p style="margin:12px 0 0;font-size:11px;color:#bbb">
+      <a href="${BRAND_URL}" style="color:#bbb;text-decoration:underline">${BRAND_URL}</a>
+    </p>
+  </div>`;
+}
+
+function emailWrapper(content: string): string {
+  return `
+<div style="font-family:Arial,sans-serif;max-width:620px;margin:0 auto;padding:32px 24px;color:#1a1a1a;background:#fff">
+  ${content}
+  ${poweredByFooter()}
+</div>`;
 }
 
 // ── Order-sheet email sent to the customer ──────────────────────────────────
@@ -28,9 +66,7 @@ function reservationHtml(o: {
   customerName: string;
   reference: string;
   date?: string;
-  // New structured format
   items?: Array<{ name: string; serial_number?: string | null; price: number }>;
-  // Legacy fallback
   productName?: string; offerPrice?: number; quantity?: number; serialNumbers?: string[];
 }) {
   const ref  = o.reference ?? "—";
@@ -42,7 +78,6 @@ function reservationHtml(o: {
     } catch { return "7 days from today"; }
   })();
 
-  // Normalise to items array
   let items: Array<{ name: string; serial?: string; price: number }> = [];
   if (o.items && o.items.length > 0) {
     items = o.items.map(i => ({ name: i.name, serial: i.serial_number ?? undefined, price: i.price }));
@@ -62,13 +97,11 @@ function reservationHtml(o: {
     <tr style="border-bottom:1px solid #e5e5e5">
       <td style="padding:8px 6px;color:#666">${idx + 1}</td>
       <td style="padding:8px 6px">${esc(item.name)}</td>
-      <td style="padding:8px 6px;font-family:monospace;font-size:12px;color:#444">${item.serial ? esc(item.serial) : "—"}</td>
+      <td style="padding:8px 6px;font-family:monospace;font-size:12px;color:#4f46e5">${item.serial ? esc(item.serial) : "—"}</td>
       <td style="padding:8px 6px;text-align:right;font-weight:600">KSh ${Number(item.price).toLocaleString()}</td>
     </tr>`).join("");
 
-  return `
-<div style="font-family:Arial,sans-serif;max-width:620px;margin:0 auto;padding:32px 24px;color:#1a1a1a;background:#fff">
-
+  return emailWrapper(`
   <!-- Header -->
   <div style="border-bottom:3px solid #1a1a1a;padding-bottom:20px;margin-bottom:24px">
     <h1 style="margin:0;font-size:22px;font-weight:800;letter-spacing:-0.5px">Reservation Order Sheet</h1>
@@ -110,6 +143,9 @@ function reservationHtml(o: {
     </tfoot>
   </table>
 
+  <!-- Browse button -->
+  ${ctaButton(SITE_URL, "Browse More Items →", "#059669")}
+
   <!-- Terms -->
   <div style="background:#fffbeb;border:1px solid #fde68a;border-radius:6px;padding:14px 16px;font-size:12px;color:#78350f;margin-bottom:24px">
     <p style="margin:0 0 6px;font-weight:700">Important — please read</p>
@@ -122,71 +158,133 @@ function reservationHtml(o: {
   </div>
 
   <p style="font-size:12px;color:#999;margin:0">Questions? Simply reply to this email and our team will get back to you.</p>
-</div>`;
+  `);
 }
 
 // ── Admin: new reservation ──────────────────────────────────────────────────
 function adminReservationHtml(o: {
   productName: string; customerName: string; customerEmail: string;
   customerPhone: string; notes?: string | null; quantity?: number; serialNumbers?: string[];
-  reference?: string; contactMethod?: string;
+  reference?: string; contactMethod?: string; productId?: string;
 }) {
   const qty = o.quantity ?? 1;
   const serials = o.serialNumbers ?? [];
   const contactLabel = o.contactMethod === "whatsapp" ? "WhatsApp" : o.contactMethod === "phone" ? "Phone" : "Email";
-  return `<div style="font-family:Arial,sans-serif;max-width:560px;margin:0 auto;padding:24px;color:#1a1a1a">
-    <h2 style="margin:0 0 12px">🛒 New reservation</h2>
-    ${o.reference ? `<p><strong>Ref:</strong> <code>${esc(o.reference)}</code></p>` : ""}
-    <p><strong>Product:</strong> ${esc(o.productName)}${qty > 1 ? ` × ${qty}` : ""}</p>
-    ${serials.length ? `<p><strong>Serial(s):</strong> <code>${serials.map(esc).join(", ")}</code></p>` : ""}
-    <hr style="border:none;border-top:1px solid #e5e5e5;margin:12px 0"/>
-    <p><strong>Customer:</strong> ${esc(o.customerName)}</p>
-    <p><strong>Email:</strong> ${esc(o.customerEmail)}</p>
-    <p><strong>Phone:</strong> ${esc(o.customerPhone)}</p>
-    <p><strong>Preferred contact:</strong> ${esc(contactLabel)}</p>
-    ${o.notes ? `<p><strong>Notes:</strong> ${esc(o.notes)}</p>` : ""}
-  </div>`;
+  const productLink = o.productId ? `${SITE_URL}/product/${o.productId}` : SITE_URL;
+
+  return emailWrapper(`
+  <h2 style="margin:0 0 16px;font-size:20px">🛒 New reservation received</h2>
+
+  <div style="background:#f0fdf4;border:1px solid #86efac;border-radius:8px;padding:14px 16px;margin-bottom:20px">
+    <p style="margin:0;font-size:15px;font-weight:700;color:#15803d">${esc(o.productName)}${qty > 1 ? ` × ${qty}` : ""}</p>
+    ${o.reference ? `<p style="margin:4px 0 0;font-family:monospace;font-size:12px;color:#166534">Ref: ${esc(o.reference)}</p>` : ""}
+    ${serials.length ? `<p style="margin:4px 0 0;font-family:monospace;font-size:12px;color:#4f46e5">Serial(s): ${serials.map(esc).join(", ")}</p>` : ""}
+  </div>
+
+  <table style="width:100%;border-collapse:collapse;font-size:13px;margin-bottom:20px">
+    <tr><td style="padding:5px 0;color:#666;width:140px;vertical-align:top">Customer</td><td style="padding:5px 0;font-weight:600">${esc(o.customerName)}</td></tr>
+    <tr><td style="padding:5px 0;color:#666;vertical-align:top">Email</td><td style="padding:5px 0"><a href="mailto:${esc(o.customerEmail)}" style="color:#1a1a1a">${esc(o.customerEmail)}</a></td></tr>
+    <tr><td style="padding:5px 0;color:#666;vertical-align:top">Phone</td><td style="padding:5px 0">${esc(o.customerPhone)}</td></tr>
+    <tr><td style="padding:5px 0;color:#666;vertical-align:top">Preferred contact</td><td style="padding:5px 0">${esc(contactLabel)}</td></tr>
+    ${o.notes ? `<tr><td style="padding:5px 0;color:#666;vertical-align:top">Notes</td><td style="padding:5px 0">${esc(o.notes)}</td></tr>` : ""}
+  </table>
+
+  <div style="display:flex;gap:12px;margin:20px 0">
+    ${ctaButton(ADMIN_URL, "Open Admin Dashboard →")}
+  </div>
+  ${o.productId ? ctaButton(productLink, "View Product Page →", "#4f46e5") : ""}
+  `);
 }
 
 // ── Reserver outbid ─────────────────────────────────────────────────────────
 function outbidHtml(o: {
   reserverName: string; productName: string; serialNumber?: string;
-  originalPrice: number; counterPrice: number;
+  originalPrice: number; counterPrice: number; productId?: string;
 }) {
-  return `<div style="font-family:Arial,sans-serif;max-width:560px;margin:0 auto;padding:24px;color:#1a1a1a">
-    <h2 style="margin:0 0 12px;color:#b91c1c">⚠️ Someone outbid your reservation</h2>
-    <p>Hi ${esc(o.reserverName)},</p>
-    <p>A new counter offer of <strong>KSh ${o.counterPrice.toLocaleString()}</strong> was placed on
-      <strong>${esc(o.productName)}</strong>${o.serialNumber ? ` (Serial: <code>${esc(o.serialNumber)}</code>)` : ""},
-      which you reserved for KSh ${o.originalPrice.toLocaleString()}.</p>
-    <p>To keep your reservation, reply with a higher offer or contact us directly. If we don't hear from you, the item may be awarded to the higher bidder.</p>
-    <p style="color:#666;font-size:12px;margin-top:16px">This is an automated notification. Reply directly to reach our team.</p>
-  </div>`;
+  const productLink = o.productId ? `${SITE_URL}/product/${o.productId}` : SITE_URL;
+
+  return emailWrapper(`
+  <!-- Alert banner -->
+  <div style="background:#fef2f2;border:2px solid #fca5a5;border-radius:8px;padding:16px 20px;margin-bottom:24px">
+    <h2 style="margin:0 0 4px;font-size:20px;color:#b91c1c">⚠️ You've been outbid</h2>
+    <p style="margin:0;font-size:13px;color:#991b1b">Act now to keep your reservation</p>
+  </div>
+
+  <p style="font-size:15px">Hi <strong>${esc(o.reserverName)}</strong>,</p>
+
+  <p style="font-size:14px;line-height:1.6">
+    A new counter offer of <strong style="font-size:18px;color:#b91c1c">KSh ${o.counterPrice.toLocaleString()}</strong>
+    was placed on <strong>${esc(o.productName)}</strong>${o.serialNumber ? ` (Serial: <code style="font-family:monospace;color:#4f46e5">${esc(o.serialNumber)}</code>)` : ""}.
+    <br>You originally reserved this item for <strong>KSh ${o.originalPrice.toLocaleString()}</strong>.
+  </p>
+
+  ${o.serialNumber ? `
+  <div style="background:#fff7ed;border-left:4px solid #f97316;border-radius:4px;padding:12px 16px;margin:16px 0;font-size:13px">
+    <p style="margin:0">Your reservation serial number:
+      <strong style="font-family:monospace;color:#4f46e5;font-size:14px">${esc(o.serialNumber)}</strong>
+    </p>
+  </div>` : ""}
+
+  <p style="font-size:14px;color:#374151;line-height:1.6">
+    To keep your reservation, click the button below to increase your offer.
+    If we don't hear from you, the item may be awarded to the higher bidder.
+  </p>
+
+  ${ctaButton(productLink, "Increase My Offer →", "#b91c1c")}
+
+  <p style="font-size:12px;color:#9ca3af;margin-top:8px;text-align:center">
+    Or reply to this email to contact our team directly.
+  </p>
+  `);
 }
 
-// ── Admin: counter offer ────────────────────────────────────────────────────
+// ── Admin: counter offer (includes outbid reserver info) ────────────────────
 function adminCounterOfferHtml(o: {
   productName: string; serialNumber?: string; counterPrice: number;
   customerName: string; customerEmail: string; customerPhone: string; notes?: string | null;
-  contactMethod?: string;
+  contactMethod?: string; productId?: string;
+  reserverName?: string; reserverEmail?: string;
 }) {
   const contactLabel = o.contactMethod === "whatsapp" ? "WhatsApp" : o.contactMethod === "phone" ? "Phone" : "Email";
-  return `<div style="font-family:Arial,sans-serif;max-width:560px;margin:0 auto;padding:24px;color:#1a1a1a">
-    <h2 style="margin:0 0 12px">💬 Counter offer received</h2>
-    <p><strong>Product:</strong> ${esc(o.productName)}${o.serialNumber ? ` — Serial: <code>${esc(o.serialNumber)}</code>` : ""}</p>
-    <p><strong>Counter price:</strong> KSh ${o.counterPrice.toLocaleString()}</p>
-    <hr style="border:none;border-top:1px solid #e5e5e5;margin:12px 0"/>
-    <p><strong>From:</strong> ${esc(o.customerName)}</p>
-    <p><strong>Email:</strong> ${esc(o.customerEmail)}</p>
-    <p><strong>Phone:</strong> ${esc(o.customerPhone)}</p>
-    <p><strong>Preferred contact:</strong> ${esc(contactLabel)}</p>
-    ${o.notes ? `<p><strong>Notes:</strong> ${esc(o.notes)}</p>` : ""}
-  </div>`;
+  const productLink = o.productId ? `${SITE_URL}/product/${o.productId}` : SITE_URL;
+
+  return emailWrapper(`
+  <h2 style="margin:0 0 16px;font-size:20px">💬 New counter offer received</h2>
+
+  <!-- Offer highlight -->
+  <div style="background:#fef3c7;border:2px solid #fcd34d;border-radius:8px;padding:16px 20px;margin-bottom:20px">
+    <p style="margin:0 0 4px;font-size:13px;color:#92400e;text-transform:uppercase;letter-spacing:1px;font-weight:600">Counter offer amount</p>
+    <p style="margin:0;font-size:28px;font-weight:800;color:#92400e">KSh ${o.counterPrice.toLocaleString()}</p>
+    <p style="margin:6px 0 0;font-size:13px;color:#78350f">
+      <strong>${esc(o.productName)}</strong>
+      ${o.serialNumber ? `— Serial: <code style="font-family:monospace;color:#4f46e5">${esc(o.serialNumber)}</code>` : ""}
+    </p>
+  </div>
+
+  <!-- New bidder -->
+  <p style="margin:0 0 8px;font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:#666">New Bidder</p>
+  <table style="width:100%;border-collapse:collapse;font-size:13px;margin-bottom:20px">
+    <tr><td style="padding:4px 0;color:#666;width:140px">Name</td><td style="padding:4px 0;font-weight:600">${esc(o.customerName)}</td></tr>
+    <tr><td style="padding:4px 0;color:#666">Email</td><td style="padding:4px 0"><a href="mailto:${esc(o.customerEmail)}" style="color:#1a1a1a">${esc(o.customerEmail)}</a></td></tr>
+    <tr><td style="padding:4px 0;color:#666">Phone</td><td style="padding:4px 0">${esc(o.customerPhone)}</td></tr>
+    <tr><td style="padding:4px 0;color:#666">Preferred contact</td><td style="padding:4px 0">${esc(contactLabel)}</td></tr>
+    ${o.notes ? `<tr><td style="padding:4px 0;color:#666;vertical-align:top">Notes</td><td style="padding:4px 0">${esc(o.notes)}</td></tr>` : ""}
+  </table>
+
+  ${o.reserverName || o.reserverEmail ? `
+  <div style="background:#fef2f2;border:1px solid #fca5a5;border-radius:6px;padding:12px 16px;margin-bottom:20px">
+    <p style="margin:0 0 6px;font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:#991b1b">Outbid reserver (notified)</p>
+    ${o.reserverName ? `<p style="margin:0;font-size:13px"><strong>${esc(o.reserverName)}</strong>${o.reserverEmail ? ` — <a href="mailto:${esc(o.reserverEmail)}" style="color:#991b1b">${esc(o.reserverEmail)}</a>` : ""}</p>` : ""}
+  </div>` : ""}
+
+  ${ctaButton(ADMIN_URL, "Open Admin Dashboard →")}
+  ${o.productId ? ctaButton(productLink, "View Product Page →", "#4f46e5") : ""}
+  `);
 }
 
 // ── Brevo sender ────────────────────────────────────────────────────────────
 async function sendBrevo(to: { email: string; name?: string }, subject: string, htmlContent: string) {
-  const apiKey     = Deno.env.get("BREVO_API_KEY");
+  const apiKey      = Deno.env.get("BREVO_API_KEY");
   const senderEmail = Deno.env.get("BREVO_SENDER_EMAIL");
   const senderName  = Deno.env.get("BREVO_SENDER_NAME") ?? "Furniture Store";
   if (!apiKey || !senderEmail) throw new Error("Brevo not configured: missing BREVO_API_KEY or BREVO_SENDER_EMAIL");
@@ -203,9 +301,8 @@ async function sendBrevo(to: { email: string; name?: string }, subject: string, 
 serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: CORS });
   try {
-    const body  = await req.json();
-    const type  = body.type as string;
-    // Admin email: prefer what the caller passes, fall back to the Supabase secret
+    const body      = await req.json();
+    const type      = body.type as string;
     const adminEmail = body.admin_email || Deno.env.get("ADMIN_EMAIL") || "";
 
     let to: { email: string; name?: string };
@@ -241,16 +338,17 @@ serve(async (req) => {
           customerEmail: body.customer_email, customerPhone: body.customer_phone,
           notes: body.notes, quantity: body.quantity, serialNumbers: body.serial_numbers,
           reference: body.reference, contactMethod: body.contact_method,
+          productId: body.product_id,
         });
         break;
 
       case "counter_offer_reserver":
         to      = { email: body.reserver_email, name: body.reserver_name };
-        subject = `Your reservation for ${body.product_name} has been outbid`;
+        subject = `⚠️ You've been outbid on ${body.product_name} — act now`;
         html    = outbidHtml({
           reserverName: body.reserver_name, productName: body.product_name,
           serialNumber: body.serial_number, originalPrice: body.original_price,
-          counterPrice: body.counter_price,
+          counterPrice: body.counter_price, productId: body.product_id,
         });
         break;
 
@@ -261,12 +359,14 @@ serve(async (req) => {
             { headers: { ...CORS, "Content-Type": "application/json" } });
         }
         to      = { email: adminEmail };
-        subject = `Counter offer on: ${body.product_name}${body.serial_number ? ` (${body.serial_number})` : ""}`;
+        subject = `Counter offer KSh ${Number(body.counter_price).toLocaleString()} — ${body.product_name}${body.serial_number ? ` (${body.serial_number})` : ""}`;
         html    = adminCounterOfferHtml({
           productName: body.product_name, serialNumber: body.serial_number,
           counterPrice: body.counter_price, customerName: body.customer_name,
-          customerEmail: body.customer_email, customerPhone: body.customer_phone, notes: body.notes,
-          contactMethod: body.contact_method,
+          customerEmail: body.customer_email, customerPhone: body.customer_phone,
+          notes: body.notes, contactMethod: body.contact_method,
+          productId: body.product_id,
+          reserverName: body.reserver_name, reserverEmail: body.reserver_email,
         });
         break;
 

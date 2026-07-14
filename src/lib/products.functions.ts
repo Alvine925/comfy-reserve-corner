@@ -544,6 +544,7 @@ export const createCounterOffer = createServerFn({ method: "POST" })
           reserver_email: reservation.customer_email,
           reserver_name: reservation.customer_name,
           product_name: product.name,
+          product_id: data.product_id,
           serial_number: product.serial_number ?? undefined,
           original_price: Number(product.offer_price),
           counter_price: data.counter_price,
@@ -555,6 +556,7 @@ export const createCounterOffer = createServerFn({ method: "POST" })
       body: {
         type: "counter_offer_admin",
         product_name: product.name,
+        product_id: data.product_id,
         serial_number: product.serial_number ?? undefined,
         counter_price: data.counter_price,
         customer_name: data.customer_name,
@@ -562,6 +564,9 @@ export const createCounterOffer = createServerFn({ method: "POST" })
         customer_phone: data.customer_phone,
         notes: data.notes,
         contact_method: data.contact_method,
+        // Outbid reserver details so admin sees the full picture
+        reserver_name: reservation?.customer_name ?? undefined,
+        reserver_email: reservation?.customer_email ?? undefined,
       },
     });
 
