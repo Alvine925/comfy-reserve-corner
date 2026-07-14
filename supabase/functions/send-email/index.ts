@@ -129,10 +129,11 @@ function reservationHtml(o: {
 function adminReservationHtml(o: {
   productName: string; customerName: string; customerEmail: string;
   customerPhone: string; notes?: string | null; quantity?: number; serialNumbers?: string[];
-  reference?: string;
+  reference?: string; contactMethod?: string;
 }) {
   const qty = o.quantity ?? 1;
   const serials = o.serialNumbers ?? [];
+  const contactLabel = o.contactMethod === "whatsapp" ? "WhatsApp" : o.contactMethod === "phone" ? "Phone" : "Email";
   return `<div style="font-family:Arial,sans-serif;max-width:560px;margin:0 auto;padding:24px;color:#1a1a1a">
     <h2 style="margin:0 0 12px">🛒 New reservation</h2>
     ${o.reference ? `<p><strong>Ref:</strong> <code>${esc(o.reference)}</code></p>` : ""}
@@ -142,6 +143,7 @@ function adminReservationHtml(o: {
     <p><strong>Customer:</strong> ${esc(o.customerName)}</p>
     <p><strong>Email:</strong> ${esc(o.customerEmail)}</p>
     <p><strong>Phone:</strong> ${esc(o.customerPhone)}</p>
+    <p><strong>Preferred contact:</strong> ${esc(contactLabel)}</p>
     ${o.notes ? `<p><strong>Notes:</strong> ${esc(o.notes)}</p>` : ""}
   </div>`;
 }
@@ -166,7 +168,9 @@ function outbidHtml(o: {
 function adminCounterOfferHtml(o: {
   productName: string; serialNumber?: string; counterPrice: number;
   customerName: string; customerEmail: string; customerPhone: string; notes?: string | null;
+  contactMethod?: string;
 }) {
+  const contactLabel = o.contactMethod === "whatsapp" ? "WhatsApp" : o.contactMethod === "phone" ? "Phone" : "Email";
   return `<div style="font-family:Arial,sans-serif;max-width:560px;margin:0 auto;padding:24px;color:#1a1a1a">
     <h2 style="margin:0 0 12px">💬 Counter offer received</h2>
     <p><strong>Product:</strong> ${esc(o.productName)}${o.serialNumber ? ` — Serial: <code>${esc(o.serialNumber)}</code>` : ""}</p>
@@ -175,6 +179,7 @@ function adminCounterOfferHtml(o: {
     <p><strong>From:</strong> ${esc(o.customerName)}</p>
     <p><strong>Email:</strong> ${esc(o.customerEmail)}</p>
     <p><strong>Phone:</strong> ${esc(o.customerPhone)}</p>
+    <p><strong>Preferred contact:</strong> ${esc(contactLabel)}</p>
     ${o.notes ? `<p><strong>Notes:</strong> ${esc(o.notes)}</p>` : ""}
   </div>`;
 }
@@ -235,7 +240,7 @@ serve(async (req) => {
           productName: body.product_name, customerName: body.customer_name,
           customerEmail: body.customer_email, customerPhone: body.customer_phone,
           notes: body.notes, quantity: body.quantity, serialNumbers: body.serial_numbers,
-          reference: body.reference,
+          reference: body.reference, contactMethod: body.contact_method,
         });
         break;
 
@@ -261,6 +266,7 @@ serve(async (req) => {
           productName: body.product_name, serialNumber: body.serial_number,
           counterPrice: body.counter_price, customerName: body.customer_name,
           customerEmail: body.customer_email, customerPhone: body.customer_phone, notes: body.notes,
+          contactMethod: body.contact_method,
         });
         break;
 

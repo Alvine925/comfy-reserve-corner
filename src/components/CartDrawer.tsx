@@ -23,7 +23,7 @@ import {
 export function CartDrawer() {
   const { items, removeItem, clearCart, total, isOpen, closeCart } = useCart();
   const reserve = useServerFn(createCartReservation);
-  const [form, setForm] = useState({ name: "", email: "", phone: "", notes: "" });
+  const [form, setForm] = useState({ name: "", email: "", phone: "", notes: "", contact_method: "email" });
   const [submitting, setSubmitting] = useState(false);
   const [confirmed, setConfirmed] = useState<ReservationDocData | null>(null);
 
@@ -39,6 +39,7 @@ export function CartDrawer() {
           customer_email: form.email,
           customer_phone: form.phone,
           notes: form.notes || undefined,
+          contact_method: form.contact_method,
         },
       });
 
@@ -62,7 +63,7 @@ export function CartDrawer() {
 
       setConfirmed(docData);
       clearCart();
-      setForm({ name: "", email: "", phone: "", notes: "" });
+      setForm({ name: "", email: "", phone: "", notes: "", contact_method: "email" });
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Reservation failed");
     } finally {
@@ -282,11 +283,32 @@ export function CartDrawer() {
                 />
               </div>
 
-              {/* Inline T&C reminder before submit */}
-              <div className="rounded-lg border border-border bg-muted/30 px-3 py-2.5 text-[11px] leading-relaxed text-muted-foreground">
+              {/* Contact preference */}
+              <div>
+                <Label className="text-xs">Preferred contact method</Label>
+                <div className="mt-2 flex gap-3">
+                  {(["email", "phone", "whatsapp"] as const).map((method) => (
+                    <button
+                      key={method}
+                      type="button"
+                      onClick={() => setForm({ ...form, contact_method: method })}
+                      className={`flex-1 rounded-lg border py-2 text-xs font-medium capitalize transition-colors ${
+                        form.contact_method === method
+                          ? "border-foreground bg-foreground text-background"
+                          : "border-border text-muted-foreground hover:border-foreground/40"
+                      }`}
+                    >
+                      {method === "whatsapp" ? "WhatsApp" : method.charAt(0).toUpperCase() + method.slice(1)}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* T&C — plain text, no card */}
+              <p className="text-[11px] leading-relaxed text-muted-foreground">
                 By confirming, you acknowledge that reservations are subject to the highest-bidder policy,
                 are valid for <strong>7 days</strong>, and are not guaranteed until full payment is received.
-              </div>
+              </p>
             </div>
 
             {/* Submit */}

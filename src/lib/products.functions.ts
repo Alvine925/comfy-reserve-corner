@@ -385,6 +385,7 @@ const reservationSchema = z.object({
   customer_phone: z.string().trim().min(3).max(40),
   notes: z.string().max(1000).optional(),
   quantity: z.number().int().min(1).max(500).default(1),
+  contact_method: z.enum(["email", "phone", "whatsapp"]).default("email"),
 });
 
 export const createReservation = createServerFn({ method: "POST" })
@@ -472,6 +473,7 @@ export const createReservation = createServerFn({ method: "POST" })
         quantity: qty,
         serial_numbers: serialNumbers,
         reference,
+        contact_method: data.contact_method,
       },
     });
 
@@ -488,6 +490,7 @@ const counterOfferSchema = z.object({
   customer_phone: z.string().trim().min(3).max(40),
   counter_price: z.number().positive(),
   notes: z.string().max(1000).optional(),
+  contact_method: z.enum(["email", "phone", "whatsapp"]).default("email"),
 });
 
 export const createCounterOffer = createServerFn({ method: "POST" })
@@ -558,6 +561,7 @@ export const createCounterOffer = createServerFn({ method: "POST" })
         customer_email: data.customer_email,
         customer_phone: data.customer_phone,
         notes: data.notes,
+        contact_method: data.contact_method,
       },
     });
 
@@ -685,6 +689,7 @@ const cartReservationSchema = z.object({
   customer_email: z.string().trim().email().max(255),
   customer_phone: z.string().trim().min(3).max(40),
   notes: z.string().max(1000).optional(),
+  contact_method: z.enum(["email", "phone", "whatsapp"]).default("email"),
 });
 
 export const createCartReservation = createServerFn({ method: "POST" })
@@ -765,6 +770,7 @@ export const createCartReservation = createServerFn({ method: "POST" })
         quantity: unitIds.length,
         serial_numbers: serialNumbers,
         reference,
+        contact_method: data.contact_method,
       },
     });
 

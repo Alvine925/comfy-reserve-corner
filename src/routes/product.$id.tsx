@@ -379,6 +379,13 @@ function SerialPickerPanel({
   const defaultUnit = units.find((u) => u.id === product.id) ?? units[0] ?? null;
   const [selectedUnitId, setSelectedUnitId] = useState<string>(defaultUnit?.id ?? "");
 
+  // Sync selectedUnitId once availableUnits loads (it arrives after mount)
+  useEffect(() => {
+    if (selectedUnitId === "" && units.length > 0) {
+      setSelectedUnitId(units.find((u) => u.id === product.id)?.id ?? units[0].id);
+    }
+  }, [units.length]);
+
   const cartUnitIds = new Set(items.map((i) => i.unitId));
   const selectedUnit = units.find((u) => u.id === selectedUnitId) ?? null;
   const selectedInCart = cartUnitIds.has(selectedUnitId);
@@ -519,7 +526,7 @@ function CounterOfferForm({
   onSuccess: () => void;
 }) {
   const submitOffer = useServerFn(createCounterOffer);
-  const [form, setForm] = useState({ name: "", email: "", phone: "", counter_price: "", notes: "" });
+  const [form, setForm] = useState({ name: "", email: "", phone: "", counter_price: "", notes: "", contact_method: "email" });
   const [submitting, setSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
 
@@ -542,6 +549,7 @@ function CounterOfferForm({
           customer_phone: form.phone,
           counter_price: price,
           notes: form.notes || undefined,
+          contact_method: form.contact_method,
         },
       });
       setSubmitted(true);
@@ -567,17 +575,12 @@ function CounterOfferForm({
 
   return (
     <>
-      <div className="mb-6 rounded-lg border border-dashed p-4 text-sm text-muted-foreground">
-        <p className="font-medium text-foreground">This item is reserved</p>
-        {product.serial_number && (
-          <p className="mt-1 font-mono text-xs">Unit: <strong>{product.serial_number}</strong></p>
-        )}
-        <p className="mt-1">
-          Submit a counter offer above{" "}
-          <strong>KSh {Number(product.offer_price).toLocaleString()}</strong>. The current reserver
-          will be emailed their unit serial number and given a chance to increase their offer.
-        </p>
-      </div>
+      <p className="mb-4 text-sm text-muted-foreground">
+        <span className="font-medium text-foreground">This item is reserved.</span>{" "}
+        {product.serial_number && <span className="font-mono text-xs">Unit: <strong>{product.serial_number}</strong> — </span>}
+        Submit a counter offer above <strong>KSh {Number(product.offer_price).toLocaleString()}</strong>. The current reserver
+        will be notified and given a chance to increase their offer.
+      </p>
       <h2 className="text-xl font-semibold text-foreground">Make a counter offer</h2>
       <form onSubmit={onSubmit} className="mt-4 space-y-3">
         <div>
@@ -608,6 +611,26 @@ function CounterOfferForm({
         <div>
           <Label htmlFor="co-notes">Notes (optional)</Label>
           <Textarea id="co-notes" value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} maxLength={1000} rows={3} />
+        </div>
+        {/* Contact preference */}
+        <div>
+          <Label className="text-sm">Preferred contact method</Label>
+          <div className="mt-2 flex gap-3">
+            {(["email", "phone", "whatsapp"] as const).map((method) => (
+              <button
+                key={method}
+                type="button"
+                onClick={() => setForm({ ...form, contact_method: method })}
+                className={`flex-1 rounded-lg border py-2 text-xs font-medium capitalize transition-colors ${
+                  form.contact_method === method
+                    ? "border-foreground bg-foreground text-background"
+                    : "border-border text-muted-foreground hover:border-foreground/40"
+                }`}
+              >
+                {method === "whatsapp" ? "WhatsApp" : method.charAt(0).toUpperCase() + method.slice(1)}
+              </button>
+            ))}
+          </div>
         </div>
         <Button type="submit" disabled={submitting} className="w-full">
           {submitting ? "Submitting…" : "Submit counter offer"}
