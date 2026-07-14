@@ -441,32 +441,32 @@ export const createReservation = createServerFn({ method: "POST" })
 
     await supabaseAdmin.from("products").update({ is_reserved: true }).in("id", unitIds);
 
-    await sendBrevoEmail({
-      to: { email: data.customer_email, name: data.customer_name },
-      subject: `Reservation confirmed: ${product.name}${qty > 1 ? ` × ${qty}` : ""}`,
-      htmlContent: reservationConfirmationHtml({
-        customerName: data.customer_name,
-        productName: product.name,
-        offerPrice: Number(product.offer_price),
+    await supabaseAdmin.functions.invoke("send-email", {
+      body: {
+        type: "reservation_customer",
+        customer_email: data.customer_email,
+        customer_name: data.customer_name,
+        product_name: product.name,
+        offer_price: Number(product.offer_price),
         quantity: qty,
-        serialNumbers,
-      }),
+        serial_numbers: serialNumbers,
+      },
     });
 
     const adminEmail = process.env.ADMIN_NOTIFY_EMAIL;
     if (adminEmail) {
-      await sendBrevoEmail({
-        to: { email: adminEmail },
-        subject: `New reservation: ${product.name}${qty > 1 ? ` × ${qty}` : ""}`,
-        htmlContent: adminNotificationHtml({
-          productName: product.name,
-          customerName: data.customer_name,
-          customerEmail: data.customer_email,
-          customerPhone: data.customer_phone,
+      await supabaseAdmin.functions.invoke("send-email", {
+        body: {
+          type: "reservation_admin",
+          admin_email: adminEmail,
+          product_name: product.name,
+          customer_name: data.customer_name,
+          customer_email: data.customer_email,
+          customer_phone: data.customer_phone,
           notes: data.notes,
           quantity: qty,
-          serialNumbers,
-        }),
+          serial_numbers: serialNumbers,
+        },
       });
     }
 
