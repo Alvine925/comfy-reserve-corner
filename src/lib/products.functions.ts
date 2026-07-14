@@ -391,9 +391,6 @@ export const createReservation = createServerFn({ method: "POST" })
   .inputValidator((d: unknown) => reservationSchema.parse(d))
   .handler(async ({ data }) => {
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-    const { sendBrevoEmail, reservationConfirmationHtml, adminNotificationHtml } = await import(
-      "./email.server"
-    );
 
     const qty = data.quantity ?? 1;
 
@@ -444,32 +441,32 @@ export const createReservation = createServerFn({ method: "POST" })
 
     await supabaseAdmin.from("products").update({ is_reserved: true }).in("id", unitIds);
 
-    await sendBrevoEmail({
-      to: { email: data.customer_email, name: data.customer_name },
-      subject: `Reservation confirmed: ${product.name}${qty > 1 ? ` × ${qty}` : ""}`,
-      htmlContent: reservationConfirmationHtml({
-        customerName: data.customer_name,
-        productName: product.name,
-        offerPrice: Number(product.offer_price),
+    await supabaseAdmin.functions.invoke("send-email", {
+      body: {
+        type: "reservation_customer",
+        customer_email: data.customer_email,
+        customer_name: data.customer_name,
+        product_name: product.name,
+        offer_price: Number(product.offer_price),
         quantity: qty,
-        serialNumbers,
-      }),
+        serial_numbers: serialNumbers,
+      },
     });
 
     const adminEmail = process.env.ADMIN_NOTIFY_EMAIL;
     if (adminEmail) {
-      await sendBrevoEmail({
-        to: { email: adminEmail },
-        subject: `New reservation: ${product.name}${qty > 1 ? ` × ${qty}` : ""}`,
-        htmlContent: adminNotificationHtml({
-          productName: product.name,
-          customerName: data.customer_name,
-          customerEmail: data.customer_email,
-          customerPhone: data.customer_phone,
+      await supabaseAdmin.functions.invoke("send-email", {
+        body: {
+          type: "reservation_admin",
+          admin_email: adminEmail,
+          product_name: product.name,
+          customer_name: data.customer_name,
+          customer_email: data.customer_email,
+          customer_phone: data.customer_phone,
           notes: data.notes,
           quantity: qty,
-          serialNumbers,
-        }),
+          serial_numbers: serialNumbers,
+        },
       });
     }
 
@@ -492,11 +489,10 @@ export const createCounterOffer = createServerFn({ method: "POST" })
   .inputValidator((d: unknown) => counterOfferSchema.parse(d))
   .handler(async ({ data }) => {
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-    const { sendBrevoEmail, outbidNotificationHtml } = await import("./email.server");
 
     const { data: product, error: pErr } = await supabaseAdmin
       .from("products")
-      .select("id,name,offer_price,is_reserved,is_active")
+      .select("id,name,offer_price,is_reserved,is_active,serial_number")
       .eq("id", data.product_id)
       .maybeSingle();
     if (pErr) throw new Error(pErr.message);
@@ -534,31 +530,33 @@ export const createCounterOffer = createServerFn({ method: "POST" })
       .maybeSingle();
 
     if (reservation) {
-      await sendBrevoEmail({
-        to: { email: reservation.customer_email, name: reservation.customer_name },
-        subject: `Your reservation for ${product.name} has been outbid`,
-        htmlContent: outbidNotificationHtml({
-          reserverName: reservation.customer_name,
-          productName: product.name,
-          serialNumber: product.serial_number ?? undefined,
-          originalPrice: Number(product.offer_price),
-          counterPrice: data.counter_price,
-        }),
+      await supabaseAdmin.functions.invoke("send-email", {
+        body: {
+          type: "counter_offer_reserver",
+          reserver_email: reservation.customer_email,
+          reserver_name: reservation.customer_name,
+          product_name: product.name,
+          serial_number: product.serial_number ?? undefined,
+          original_price: Number(product.offer_price),
+          counter_price: data.counter_price,
+        },
       });
     }
 
     const adminEmail = process.env.ADMIN_NOTIFY_EMAIL;
     if (adminEmail) {
-      await sendBrevoEmail({
-        to: { email: adminEmail },
-        subject: `Counter offer on: ${product.name}${product.serial_number ? ` (${product.serial_number})` : ""}`,
-        htmlContent: `
-          <p><strong>Counter offer received</strong></p>
-          <p>Product: ${product.name}${product.serial_number ? ` — Serial: <code>${product.serial_number}</code>` : ""}</p>
-          <p>Counter price: KSh ${data.counter_price.toLocaleString()}</p>
-          <p>From: ${data.customer_name} — ${data.customer_email} — ${data.customer_phone}</p>
-          ${data.notes ? `<p>Notes: ${data.notes}</p>` : ""}
-        `,
+      await supabaseAdmin.functions.invoke("send-email", {
+        body: {
+          type: "counter_offer_admin",
+          admin_email: adminEmail,
+          product_name: product.name,
+          serial_number: product.serial_number ?? undefined,
+          counter_price: data.counter_price,
+          customer_name: data.customer_name,
+          customer_email: data.customer_email,
+          customer_phone: data.customer_phone,
+          notes: data.notes,
+        },
       });
     }
 
@@ -692,9 +690,6 @@ export const createCartReservation = createServerFn({ method: "POST" })
   .inputValidator((d: unknown) => cartReservationSchema.parse(d))
   .handler(async ({ data }) => {
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-    const { sendBrevoEmail, reservationConfirmationHtml, adminNotificationHtml } = await import(
-      "./email.server"
-    );
 
     const unitIds = data.items.map((i) => i.unit_id);
 
@@ -721,7 +716,7 @@ export const createCartReservation = createServerFn({ method: "POST" })
       customer_email: data.customer_email,
       customer_phone: data.customer_phone,
       notes: data.notes ?? null,
-      status: "pending",
+      status: "pending" as const,
       quantity: 1,
     }));
 
@@ -738,32 +733,32 @@ export const createCartReservation = createServerFn({ method: "POST" })
     const productNames = [...new Set((units ?? []).map((u: any) => u.name as string))];
     const totalPrice = (units ?? []).reduce((sum: number, u: any) => sum + Number(u.offer_price), 0);
 
-    await sendBrevoEmail({
-      to: { email: data.customer_email, name: data.customer_name },
-      subject: `Reservation confirmed: ${productNames.length === 1 ? productNames[0] : `${unitIds.length} items`}`,
-      htmlContent: reservationConfirmationHtml({
-        customerName: data.customer_name,
-        productName: productNames.join(", "),
-        offerPrice: totalPrice,
+    await supabaseAdmin.functions.invoke("send-email", {
+      body: {
+        type: "reservation_customer",
+        customer_email: data.customer_email,
+        customer_name: data.customer_name,
+        product_name: productNames.join(", "),
+        offer_price: totalPrice,
         quantity: unitIds.length,
-        serialNumbers,
-      }),
+        serial_numbers: serialNumbers,
+      },
     });
 
     const adminEmail = process.env.ADMIN_NOTIFY_EMAIL;
     if (adminEmail) {
-      await sendBrevoEmail({
-        to: { email: adminEmail },
-        subject: `New cart reservation: ${unitIds.length} item(s) from ${data.customer_name}`,
-        htmlContent: adminNotificationHtml({
-          productName: productNames.join(", "),
-          customerName: data.customer_name,
-          customerEmail: data.customer_email,
-          customerPhone: data.customer_phone,
+      await supabaseAdmin.functions.invoke("send-email", {
+        body: {
+          type: "reservation_admin",
+          admin_email: adminEmail,
+          product_name: productNames.join(", "),
+          customer_name: data.customer_name,
+          customer_email: data.customer_email,
+          customer_phone: data.customer_phone,
           notes: data.notes,
           quantity: unitIds.length,
-          serialNumbers,
-        }),
+          serial_numbers: serialNumbers,
+        },
       });
     }
 
