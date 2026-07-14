@@ -1,5 +1,6 @@
 // Central map of category value → custom furniture SVG icon component.
 // Import from here anywhere you need the map.
+import type * as React from "react";
 
 import {
   ChairIcon,
