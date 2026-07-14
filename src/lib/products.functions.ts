@@ -292,15 +292,18 @@ export const updateProduct = createServerFn({ method: "POST" })
       .single();
     if (error) throw new Error(error.message);
 
-    // Propagate all edits to every other unit with the same (old) name.
-    // Each unit keeps its own serial_number and id; everything else syncs.
+    // Propagate edits to every other unit with the same (old) name.
+    // Exclude is_reserved — each unit owns its own reservation state independently.
     if (oldName) {
-      const { error: syncErr } = await context.supabase
-        .from("products")
-        .update(data.patch)
-        .eq("name", oldName)
-        .neq("id", data.id);
-      if (syncErr) throw new Error(syncErr.message);
+      const { is_reserved: _drop, ...propagatePatch } = data.patch as Record<string, unknown>;
+      if (Object.keys(propagatePatch).length > 0) {
+        const { error: syncErr } = await context.supabase
+          .from("products")
+          .update(propagatePatch)
+          .eq("name", oldName)
+          .neq("id", data.id);
+        if (syncErr) throw new Error(syncErr.message);
+      }
     }
 
     return row;
@@ -466,6 +469,10 @@ export const createReservation = createServerFn({ method: "POST" })
       body: {
         type: "reservation_admin",
         product_name: product.name,
+        product_id: reservationProductId,
+        offer_price: Number(product.offer_price),
+        total: Number(product.offer_price) * qty,
+        items: emailItems,
         customer_name: data.customer_name,
         customer_email: data.customer_email,
         customer_phone: data.customer_phone,
@@ -600,11 +607,64 @@ export const updateReservationStatus = createServerFn({ method: "POST" })
   )
   .handler(async ({ data, context }) => {
     await assertAdmin(context);
+
+    // Fetch the reservation first so we know the product_id
+    const { data: reservation, error: rFetchErr } = await context.supabase
+      .from("reservations")
+      .select("product_id")
+      .eq("id", data.id)
+      .maybeSingle();
+    if (rFetchErr) throw new Error(rFetchErr.message);
+
     const { error } = await context.supabase
       .from("reservations")
       .update({ status: data.status })
       .eq("id", data.id);
     if (error) throw new Error(error.message);
+
+    // When a reservation is cancelled or completed, free up the reserved units
+    if (reservation && (data.status === "cancelled" || data.status === "completed")) {
+      const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+
+      // Get the product's name so we can find all sibling units
+      const { data: product } = await supabaseAdmin
+        .from("products")
+        .select("name")
+        .eq("id", reservation.product_id)
+        .maybeSingle();
+
+      if (product) {
+        // Find all units with this name that are currently marked reserved
+        const { data: reservedUnits } = await supabaseAdmin
+          .from("products")
+          .select("id")
+          .eq("name", product.name)
+          .eq("is_reserved", true);
+
+        if (reservedUnits && reservedUnits.length > 0) {
+          const unitIds = reservedUnits.map((u: any) => u.id as string);
+
+          // Of those, find any that still have a live reservation (other than this one)
+          const { data: stillActive } = await supabaseAdmin
+            .from("reservations")
+            .select("product_id")
+            .in("product_id", unitIds)
+            .in("status", ["pending", "confirmed"])
+            .neq("id", data.id);
+
+          const stillActiveIds = new Set((stillActive ?? []).map((r: any) => r.product_id));
+          const toFree = unitIds.filter((id) => !stillActiveIds.has(id));
+
+          if (toFree.length > 0) {
+            await supabaseAdmin
+              .from("products")
+              .update({ is_reserved: false })
+              .in("id", toFree);
+          }
+        }
+      }
+    }
+
     return { ok: true };
   });
 
