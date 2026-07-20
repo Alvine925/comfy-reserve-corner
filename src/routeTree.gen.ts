@@ -9,10 +9,16 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as TermsRouteImport } from './routes/terms'
 import { Route as AlvookadoRouteImport } from './routes/alvookado'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as ProductIdRouteImport } from './routes/product.$id'
 
+const TermsRoute = TermsRouteImport.update({
+  id: '/terms',
+  path: '/terms',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const AlvookadoRoute = AlvookadoRouteImport.update({
   id: '/alvookado',
   path: '/alvookado',
@@ -32,35 +38,46 @@ const ProductIdRoute = ProductIdRouteImport.update({
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/alvookado': typeof AlvookadoRoute
+  '/terms': typeof TermsRoute
   '/product/$id': typeof ProductIdRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/alvookado': typeof AlvookadoRoute
+  '/terms': typeof TermsRoute
   '/product/$id': typeof ProductIdRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/alvookado': typeof AlvookadoRoute
+  '/terms': typeof TermsRoute
   '/product/$id': typeof ProductIdRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/alvookado' | '/product/$id'
+  fullPaths: '/' | '/alvookado' | '/terms' | '/product/$id'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/alvookado' | '/product/$id'
-  id: '__root__' | '/' | '/alvookado' | '/product/$id'
+  to: '/' | '/alvookado' | '/terms' | '/product/$id'
+  id: '__root__' | '/' | '/alvookado' | '/terms' | '/product/$id'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AlvookadoRoute: typeof AlvookadoRoute
+  TermsRoute: typeof TermsRoute
   ProductIdRoute: typeof ProductIdRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/terms': {
+      id: '/terms'
+      path: '/terms'
+      fullPath: '/terms'
+      preLoaderRoute: typeof TermsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/alvookado': {
       id: '/alvookado'
       path: '/alvookado'
@@ -88,18 +105,9 @@ declare module '@tanstack/react-router' {
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AlvookadoRoute: AlvookadoRoute,
+  TermsRoute: TermsRoute,
   ProductIdRoute: ProductIdRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
-
-import type { getRouter } from './router.tsx'
-import type { startInstance } from './start.ts'
-declare module '@tanstack/react-start' {
-  interface Register {
-    ssr: true
-    router: Awaited<ReturnType<typeof getRouter>>
-    config: Awaited<ReturnType<typeof startInstance.getOptions>>
-  }
-}
