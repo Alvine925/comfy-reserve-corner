@@ -32,7 +32,7 @@ function TermsPage() {
           <section>
             <h2 className="mb-2 text-lg font-semibold text-foreground">1. About this sale</h2>
             <p>
-              This platform lists pre-owned office and home furniture available for sale.
+              This platform lists pre-owned office furniture available for sale.
               All items have been used for approximately <strong>two (2) years</strong> in a working
               office environment, but each piece has been <strong>heavily and carefully maintained</strong>
               — cleaned, inspected, and where necessary refurbished — so that it continues to serve
