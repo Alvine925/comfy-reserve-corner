@@ -157,19 +157,20 @@ function Browse() {
       <div className="min-h-screen bg-background">
         <header>
           <div className="mx-auto max-w-6xl px-4 pt-10 pb-4 sm:pt-16 sm:pb-6">
-            <span className="inline-flex items-center gap-1.5 rounded-full border border-amber-500/30 bg-amber-500/10 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.14em] text-amber-700 sm:text-[11px]">
+            <p className="flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-[0.14em] text-amber-700 sm:text-[11px]">
               <span className="h-1.5 w-1.5 rounded-full bg-amber-500 animate-pulse" />
               Live bidding · Highest offer wins
-            </span>
-            <h1 className="mt-4 text-3xl font-bold leading-[1.05] tracking-tight text-foreground sm:text-5xl md:text-6xl">
-              Handpicked furniture,{" "}
+            </p>
+            <h1 className="mt-3 text-xl font-bold leading-[1.1] tracking-tight text-foreground sm:text-3xl md:text-4xl">
+              Handpicked office furniture,{" "}
               <span className="italic text-amber-700">reimagined prices.</span>
             </h1>
-            <p className="mt-3 max-w-2xl text-sm leading-relaxed text-muted-foreground sm:mt-4 sm:text-base">
-              Gently used office &amp; home pieces — heavily maintained, honestly depreciated, and
-              waiting for a second home. Browse by category, place your offer, and reserve the one
-              that speaks to you.
+            <p className="mt-3 max-w-2xl text-sm leading-relaxed text-muted-foreground sm:text-base">
+              Gently used office pieces — heavily maintained, honestly depreciated, and ready for
+              a second workspace. Browse by category, place your offer, and reserve the one that
+              fits your setup.
             </p>
+
 
 
             {/* Filter bar — Browse button on mobile, pills on desktop */}
