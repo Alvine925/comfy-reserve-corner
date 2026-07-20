@@ -156,13 +156,21 @@ function Browse() {
     return (
       <div className="min-h-screen bg-background">
         <header>
-          <div className="mx-auto max-w-6xl px-4 pt-8 pb-3 sm:pt-12 sm:pb-4">
-            <h1 className="text-2xl font-bold tracking-tight text-foreground sm:text-4xl">
-              Furniture Collection
+          <div className="mx-auto max-w-6xl px-4 pt-10 pb-4 sm:pt-16 sm:pb-6">
+            <span className="inline-flex items-center gap-1.5 rounded-full border border-amber-500/30 bg-amber-500/10 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.14em] text-amber-700 sm:text-[11px]">
+              <span className="h-1.5 w-1.5 rounded-full bg-amber-500 animate-pulse" />
+              Live bidding · Highest offer wins
+            </span>
+            <h1 className="mt-4 text-3xl font-bold leading-[1.05] tracking-tight text-foreground sm:text-5xl md:text-6xl">
+              Handpicked furniture,{" "}
+              <span className="italic text-amber-700">reimagined prices.</span>
             </h1>
-            <p className="mt-1.5 text-xs text-muted-foreground sm:mt-2 sm:text-sm">
-              Browse our pieces by category and reserve the one you love.
+            <p className="mt-3 max-w-2xl text-sm leading-relaxed text-muted-foreground sm:mt-4 sm:text-base">
+              Gently used office &amp; home pieces — heavily maintained, honestly depreciated, and
+              waiting for a second home. Browse by category, place your offer, and reserve the one
+              that speaks to you.
             </p>
+
 
             {/* Filter bar — Browse button on mobile, pills on desktop */}
             <div className="mt-4 flex items-center gap-2">

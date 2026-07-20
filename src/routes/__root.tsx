@@ -125,15 +125,37 @@ function RootComponent() {
     <QueryClientProvider client={queryClient}>
       <CartProvider>
         <div className="flex min-h-screen flex-col">
+          {/* Top bar */}
+          <div className="w-full bg-foreground text-background">
+            <div className="mx-auto flex max-w-6xl items-center justify-center gap-2 px-4 py-1.5 text-[11px] font-medium tracking-wide">
+              <span className="opacity-70">Powered by</span>
+              <a
+                href="https://myjoyfullday.com"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="font-bold underline-offset-4 hover:underline"
+              >
+                My Joyfullday →
+              </a>
+            </div>
+          </div>
+
           <div className="flex-1">
             <Outlet />
           </div>
-          <footer className="border-t border-border py-6 text-center">
+          <footer className="border-t border-border py-8 text-center">
+            <nav className="mb-5 flex items-center justify-center gap-5 text-xs font-medium text-muted-foreground">
+              <Link to="/" className="hover:text-foreground transition-colors">Browse</Link>
+              <span className="text-muted-foreground/30">·</span>
+              <Link to="/terms" className="hover:text-foreground transition-colors">Terms &amp; Conditions</Link>
+              <span className="text-muted-foreground/30">·</span>
+              <Link to="/privacy" className="hover:text-foreground transition-colors">Privacy Policy</Link>
+            </nav>
             <p className="mb-2 text-[10px] font-semibold uppercase tracking-[0.15em] text-muted-foreground/60">
               Powered by
             </p>
             <a
-              href="https://www.myjoyfullday.com"
+              href="https://myjoyfullday.com"
               target="_blank"
               rel="noopener noreferrer"
               className="inline-block rounded-full bg-foreground px-4 py-1.5 text-[11px] font-bold tracking-wide text-background transition-opacity hover:opacity-75"

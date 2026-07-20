@@ -299,7 +299,7 @@ export const updateProduct = createServerFn({ method: "POST" })
       if (Object.keys(propagatePatch).length > 0) {
         const { error: syncErr } = await context.supabase
           .from("products")
-          .update(propagatePatch)
+          .update(propagatePatch as never)
           .eq("name", oldName)
           .neq("id", data.id);
         if (syncErr) throw new Error(syncErr.message);
