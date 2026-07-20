@@ -261,7 +261,7 @@ export function printReservationDocument(data: ReservationDocData): void {
 <div class="doc-header">
   <div>
     <h1>Furniture Collection</h1>
-    <div class="subtitle">Pre-owned office & home furniture</div>
+    <div class="subtitle">Pre-owned office furniture</div>
   </div>
   <div class="doc-type">
     <div class="label">Reservation Order</div>
