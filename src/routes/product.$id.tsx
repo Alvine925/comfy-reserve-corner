@@ -288,9 +288,26 @@ function ProductPage() {
             </p>
           )}
 
-          <div className="mt-7 sm:mt-10">
+          <div className="mt-7 rounded-2xl border border-border bg-muted/20 p-4 sm:mt-10 sm:p-6">
             {product.is_reserved ? (
-              <CounterOfferForm product={product} onSuccess={() => router.invalidate()} />
+              <div className="space-y-4">
+                <div className="flex items-start gap-3">
+                  <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-muted text-muted-foreground">
+                    <ShoppingBag className="h-4 w-4" />
+                  </div>
+                  <div>
+                    <h2 className="text-base font-semibold text-foreground">Currently reserved</h2>
+                    <p className="mt-1 text-xs leading-relaxed text-muted-foreground sm:text-sm">
+                      This piece is not available to add to cart right now, but you can still make a higher offer.
+                    </p>
+                  </div>
+                </div>
+                <Button type="button" disabled className="w-full gap-2" variant="outline">
+                  <ShoppingBag className="h-4 w-4" />
+                  Add to cart unavailable
+                </Button>
+                <CounterOfferForm product={product} onSuccess={() => router.invalidate()} />
+              </div>
             ) : (
               <SerialPickerPanel
                 product={product}
